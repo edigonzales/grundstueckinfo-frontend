@@ -1,0 +1,28 @@
+{
+  "mockEnabled": true,
+  "language": "de",
+  "serviceBaseUrl": "https://avws.sogeo.services",
+  "authUrl": "#/auth-dummy",
+  "projection": "EPSG:2056",
+  "startCenter": [2588387, 1226344],
+  "startZoom": 11,
+  "startExtent": [2420000, 1030000, 2900000, 1350000],
+  "searchServerUrlTemplate": "https://api3.geo.admin.ch/rest/services/ech/SearchServer?sr=2056&searchText={searchText}&lang={language}&type=locations&limit=20&geometryFormat=geojson&origins=address,parcel",
+  "backgroundStrategy": {
+    "switchScaleDenominator": 5000
+  },
+  "backgroundWmts": {
+    "capabilitiesUrl": "https://wmts.geo.admin.ch/EPSG/2056/1.0.0/WMTSCapabilities.xml",
+    "urlTemplate": "https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/2056/{TileMatrix}/{TileCol}/{TileRow}.jpeg",
+    "layer": "ch.swisstopo.pixelkarte-farbe",
+    "matrixSet": "2056_27",
+    "format": "image/jpeg"
+  },
+  "backgroundWms": {
+    "url": "https://geodienste.ch/db/av_situationsplan_0/deu",
+    "layers": "daten",
+    "format": "image/png",
+    "transparent": true,
+    "crs": "EPSG:2056"
+  }
+}

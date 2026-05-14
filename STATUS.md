@@ -2,20 +2,20 @@
 
 ## Gesamtstatus
 
-Status: planned
+Status: done
 
 ## Schritte
 
 | Schritt | Titel | Status | Nachweis |
 |---|---|---|---|
-| 1 | Projektbasis | planned | |
-| 2 | Config und Routing | planned | |
-| 3 | Parser-Layer | planned | |
-| 4 | Mock- und Live-Service | planned | |
-| 5 | OpenLayers-Karte | planned | |
-| 6 | Suchansicht | planned | |
-| 7 | Detailansicht | planned | |
-| 8 | E2E und Dokumentationshaertung | planned | |
+| 1 | Projektbasis | done | npm install, build, test OK |
+| 2 | Config und Routing | done | Config-Loader, Hash-Router, gi-app Root |
+| 3 | Parser-Layer | done | GetEgridParser, ExtractParser, Typen, XML-Utils |
+| 4 | Mock- und Live-Service | done | AvService Factory, Mock/Live, SearchService, Statuscodes |
+| 5 | OpenLayers-Karte | done | gi-map, EPSG:2056, OpenLayers WMTS/WMTSTileGrid, WMTS/WMS Strategie, Highlight |
+| 6 | Suchansicht | done | gi-search-view, Suche, Auswahlpanel, Kartenklick |
+| 7 | Detailansicht | done | gi-detail-view, gi-accordion-section, gi-static-plan |
+| 8 | E2E und Dokumentationshaertung | done | 12 Playwright Tests, README final, WMTS/WMS Request- und Canvas-Pruefung |
 
 ## Entscheidungen
 
@@ -30,6 +30,9 @@ Status: planned
 - Visueller Stil orientiert sich neutral an den gelieferten Screenshots.
 - Hintergrundkarte: swisstopo-WMTS `ch.swisstopo.pixelkarte-farbe` fuer kleine
   Massstaebe, geodienste.ch-WMS ab ca. 1:5000.
+- swisstopo-WMTS wird mit OpenLayers `WMTS`/`WMTSTileGrid` und MatrixSet
+  `2056_27` konfiguriert; keine `@swissgeo/coordinates`-Abhaengigkeit.
+- Startcenter der Karte: `[2588387, 1226344]` in EPSG:2056.
 
 ## Bekannte Datenauffaelligkeiten
 
