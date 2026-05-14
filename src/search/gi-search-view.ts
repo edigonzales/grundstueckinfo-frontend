@@ -144,23 +144,52 @@ export class GiSearchView extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display: block; height: 100%; position: relative; }
-        .search-view { display: flex; flex-direction: column; height: 100%; }
+        :host {
+          display: block;
+          height: 100%;
+          position: relative;
+          background: #fff;
+          color: #222;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        .search-view {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+          padding: 24px;
+          gap: 16px;
+          background: #fff;
+        }
+        h2 {
+          margin: 0;
+          color: #222;
+          font-size: 1.5rem;
+          font-weight: 600;
+          line-height: 1.2;
+        }
+        .intro {
+          margin: 0;
+          max-width: 820px;
+          color: #444;
+          font-size: 1rem;
+          line-height: 1.45;
+        }
         .search-bar { 
-          display: flex; gap: 0.5rem; 
-          padding: 1rem; 
-          background: #f8f8f8; 
-          border-bottom: 1px solid #ddd; 
+          display: flex;
+          gap: 0.5rem;
           align-items: center;
         }
         input { 
           flex: 1; 
+          min-width: 0;
           padding: 0.5rem 0.75rem; 
           border: 1px solid #ccc; 
           border-radius: 4px; 
           font-size: 1rem; 
         }
-        button { 
+        .search-bar button { 
           padding: 0.5rem 1rem; 
           background: #c00; 
           color: white; 
@@ -168,9 +197,17 @@ export class GiSearchView extends HTMLElement {
           border-radius: 4px; 
           cursor: pointer; 
           font-size: 0.9rem;
+          white-space: nowrap;
         }
-        button:hover { background: #a00; }
-        .map-wrapper { flex: 1; position: relative; }
+        .search-bar button:hover { background: #a00; }
+        .map-wrapper {
+          flex: 1 1 auto;
+          min-height: 0;
+          position: relative;
+          overflow: hidden;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        }
         gi-map { display: block; width: 100%; height: 100%; }
         .panel {
           position: absolute;
@@ -223,6 +260,8 @@ export class GiSearchView extends HTMLElement {
         .searching { padding: 1rem; color: #666; font-style: italic; }
       </style>
       <div class="search-view">
+        <h2>Grundstückinformation</h2>
+        <p class="intro">Um Grundstückinformationen einzusehen, klicken sie auf das gewünschte Grundstück oder suchen sie eine Adresse oder ein Grundstück im Suchfeld.</p>
         <div class="search-bar">
           <input type="text" id="searchInput" placeholder="Adresse, Ort, PLZ, Koordinate, Grundstück-Nr, EGRID oder EGID" />
           <button id="searchBtn">Suchen</button>

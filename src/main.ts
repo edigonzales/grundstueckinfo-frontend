@@ -48,8 +48,16 @@ export class GiApp extends HTMLElement {
     if (route.path === 'search') {
       this.shadowRoot.innerHTML = `
         <style>
-          :host { display: block; height: 100vh; }
-          gi-search-view { height: 100%; }
+          :host {
+            display: block;
+            height: 100vh;
+            overflow: hidden;
+            background: #fff;
+          }
+          gi-search-view {
+            display: block;
+            height: 100%;
+          }
         </style>
         <gi-search-view></gi-search-view>
       `;
@@ -60,7 +68,7 @@ export class GiApp extends HTMLElement {
     } else {
       this.shadowRoot.innerHTML = `
         <style>
-          :host { display: block; min-height: 100vh; background: #fafafa; }
+          :host { display: block; min-height: 100vh; background: #fff; }
         </style>
         <gi-detail-view></gi-detail-view>
       `;

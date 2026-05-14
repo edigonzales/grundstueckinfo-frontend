@@ -95,7 +95,7 @@ async function waitForMapReady(page: Page) {
     const app = document.querySelector('gi-app');
     const searchView = app?.shadowRoot?.querySelector('gi-search-view');
     const mapEl = searchView?.shadowRoot?.querySelector('gi-map') as any;
-    const canvas = mapEl?.querySelector('canvas') as HTMLCanvasElement | null;
+    const canvas = mapEl?.shadowRoot?.querySelector('canvas') as HTMLCanvasElement | null;
     return Boolean(mapEl?._map && canvas && canvas.width > 0 && canvas.height > 0);
   });
 }
@@ -115,12 +115,22 @@ async function getMapState(page: Page) {
   });
 }
 
+async function setMapZoom(page: Page, zoom: number) {
+  await page.evaluate((nextZoom) => {
+    const app = document.querySelector('gi-app');
+    const searchView = app?.shadowRoot?.querySelector('gi-search-view');
+    const mapEl = searchView?.shadowRoot?.querySelector('gi-map') as any;
+    mapEl.setZoom(nextZoom);
+    mapEl._map.renderSync();
+  }, zoom);
+}
+
 async function sampleCanvasCenters(page: Page) {
   return page.evaluate(() => {
     const app = document.querySelector('gi-app');
     const searchView = app?.shadowRoot?.querySelector('gi-search-view');
     const mapEl = searchView?.shadowRoot?.querySelector('gi-map') as HTMLElement | null;
-    const canvases = Array.from(mapEl?.querySelectorAll('canvas') ?? []) as HTMLCanvasElement[];
+    const canvases = Array.from(mapEl?.shadowRoot?.querySelectorAll('canvas') ?? []) as HTMLCanvasElement[];
 
     return canvases.flatMap((canvas) => {
       const context = canvas.getContext('2d');
@@ -171,6 +181,12 @@ test.describe('App startet', () => {
     await page.goto('/');
     await waitForMapReady(page);
 
+    await expect(page.getByRole('heading', { name: 'Grundstückinformation', level: 2 })).toBeVisible();
+    await expect(page.getByText(
+      'Um Grundstückinformationen einzusehen, klicken sie auf das gewünschte Grundstück oder suchen sie eine Adresse oder ein Grundstück im Suchfeld.',
+      { exact: true }
+    )).toBeVisible();
+
     const inputExists = await page.evaluate(() => {
       const app = document.querySelector('gi-app');
       const searchView = app?.shadowRoot?.querySelector('gi-search-view');
@@ -178,7 +194,70 @@ test.describe('App startet', () => {
       return !!input;
     });
     expect(inputExists).toBe(true);
+
+    const layout = await page.evaluate(() => {
+      const app = document.querySelector('gi-app');
+      const searchView = app?.shadowRoot?.querySelector('gi-search-view');
+      const mapWrapper = searchView?.shadowRoot?.querySelector('.map-wrapper') as HTMLElement | null;
+      const rect = mapWrapper?.getBoundingClientRect();
+
+      return {
+        bodyScrollHeight: document.body.scrollHeight,
+        innerHeight: window.innerHeight,
+        mapHeight: rect?.height ?? 0,
+        mapBottomGap: rect ? window.innerHeight - rect.bottom : 0,
+      };
+    });
+
+    expect(layout.bodyScrollHeight).toBeLessThanOrEqual(layout.innerHeight + 1);
+    expect(layout.mapHeight).toBeGreaterThan(0);
+    expect(layout.mapBottomGap).toBeGreaterThanOrEqual(20);
+    expect(layout.mapBottomGap).toBeLessThanOrEqual(28);
     await expect(page).toHaveTitle('Grundstückinformation');
+  });
+
+  test('zeigt OpenLayers-Controls mit Standard-CSS', async ({ page }) => {
+    await routeMapImages(page);
+    await page.goto('/#/search');
+    await waitForMapReady(page);
+
+    const controlState = await page.evaluate(() => {
+      const app = document.querySelector('gi-app');
+      const searchView = app?.shadowRoot?.querySelector('gi-search-view');
+      const mapEl = searchView?.shadowRoot?.querySelector('gi-map') as HTMLElement | null;
+      const zoomButton = mapEl?.shadowRoot?.querySelector('.ol-zoom .ol-zoom-in') as HTMLElement | null;
+      const scaleLine = mapEl?.shadowRoot?.querySelector('.ol-scale-line') as HTMLElement | null;
+      const scaleInner = mapEl?.shadowRoot?.querySelector('.ol-scale-line-inner') as HTMLElement | null;
+      const zoomStyle = zoomButton ? getComputedStyle(zoomButton) : null;
+      const scaleLineStyle = scaleLine ? getComputedStyle(scaleLine) : null;
+      const scaleInnerStyle = scaleInner ? getComputedStyle(scaleInner) : null;
+
+      return {
+        hasZoomButton: Boolean(zoomButton),
+        hasScaleLine: Boolean(scaleLine),
+        hasScaleInner: Boolean(scaleInner),
+        zoomBackground: zoomStyle?.backgroundColor,
+        zoomPadding: zoomStyle?.padding,
+        zoomWidth: zoomStyle?.width,
+        scalePosition: scaleLineStyle?.position,
+        scaleBottom: scaleLineStyle?.bottom,
+        scaleInnerBorderBottom: scaleInnerStyle?.borderBottomStyle,
+        scaleInnerBorderTop: scaleInnerStyle?.borderTopStyle,
+        scaleText: scaleInner?.textContent?.trim(),
+      };
+    });
+
+    expect(controlState.hasZoomButton).toBe(true);
+    expect(controlState.hasScaleLine).toBe(true);
+    expect(controlState.hasScaleInner).toBe(true);
+    expect(controlState.zoomBackground).not.toBe('rgb(204, 0, 0)');
+    expect(controlState.zoomPadding).toBe('0px');
+    expect(controlState.zoomWidth).toBe('22px');
+    expect(controlState.scalePosition).toBe('absolute');
+    expect(controlState.scaleBottom).toBe('8px');
+    expect(controlState.scaleInnerBorderBottom).toBe('solid');
+    expect(controlState.scaleInnerBorderTop).toBe('none');
+    expect(controlState.scaleText).toMatch(/\d+ (m|km)/);
   });
 
   test('lädt swisstopo-WMTS und malt die Testkacheln', async ({ page }) => {
@@ -186,6 +265,7 @@ test.describe('App startet', () => {
 
     await page.goto('/#/search');
     await waitForMapReady(page);
+    await setMapZoom(page, 6);
 
     await expect.poll(() => requests.wmtsUrls.length, { timeout: 10000 }).toBeGreaterThan(0);
     expect(requests.wmtsUrls.some((url) => url.includes('/ch.swisstopo.pixelkarte-farbe/') && url.includes('/2056/18/'))).toBe(true);
@@ -203,15 +283,10 @@ test.describe('App startet', () => {
 
     await page.goto('/#/search');
     await waitForMapReady(page);
+    await setMapZoom(page, 6);
     await expect.poll(() => requests.wmtsUrls.length, { timeout: 10000 }).toBeGreaterThan(0);
 
-    await page.evaluate(() => {
-      const app = document.querySelector('gi-app');
-      const searchView = app?.shadowRoot?.querySelector('gi-search-view');
-      const mapEl = searchView?.shadowRoot?.querySelector('gi-map') as any;
-      mapEl.setZoom(11);
-      mapEl._map.renderSync();
-    });
+    await setMapZoom(page, 11);
 
     await expect.poll(() => requests.wmsUrls.length, { timeout: 10000 }).toBeGreaterThan(0);
     expect(requests.wmsUrls.some((url) => url.includes('SERVICE=WMS') && url.includes('LAYERS=daten'))).toBe(true);

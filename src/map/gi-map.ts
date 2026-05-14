@@ -1,4 +1,4 @@
-import 'ol/ol.css';
+import olCss from 'ol/ol.css?raw';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import { Tile as TileLayer, Image as ImageLayer, Vector as VectorLayer } from 'ol/layer';
@@ -26,6 +26,7 @@ registerSwissProjection();
 
 export class GiMap extends HTMLElement {
   private _map: Map | null = null;
+  private readonly _mapTarget: HTMLDivElement;
   private _highlightLayer: VectorLayer<VectorSource> | null = null;
   private _highlightSource = new VectorSource();
   private _wmtsLayer: TileLayer<WMTS> | null = null;
@@ -39,6 +40,16 @@ export class GiMap extends HTMLElement {
 
   constructor() {
     super();
+    const shadow = this.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `
+      <style>
+        ${olCss}
+        :host { display: block; width: 100%; height: 100%; }
+        .map-target { width: 100%; height: 100%; }
+      </style>
+      <div class="map-target"></div>
+    `;
+    this._mapTarget = shadow.querySelector('.map-target') as HTMLDivElement;
   }
 
   connectedCallback() {
@@ -75,7 +86,7 @@ export class GiMap extends HTMLElement {
 
   private createMap(): Map {
     return new Map({
-      target: this,
+      target: this._mapTarget,
       controls: defaultControls().extend([
         new ScaleLine({ units: 'metric' }),
       ]),
