@@ -2,6 +2,7 @@ import type { AppConfig } from '../config';
 import type { AvService } from '../services/av-service';
 import type { Router } from '../router';
 import type { ExtractViewModel, Office } from '../parsers/types';
+import { formatNumber } from '../utils/format-number';
 import './gi-static-plan';
 import './gi-accordion-section';
 
@@ -123,7 +124,7 @@ export class GiDetailView extends HTMLElement {
         .data-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
         .data-table th, .data-table td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
         .data-table th { width: 40%; color: #666; font-weight: 500; }
-        .plan-wrapper { border: 1px solid #eee; padding: 0.5rem; background: white; }
+        .plan-wrapper { background: white; }
         h2 { font-size: 1.1rem; margin: 0 0 0.5rem; color: #333; }
         .meta { color: #666; font-size: 0.85rem; margin-top: 0.5rem; }
         .disclaimer { background: #f8f8f8; padding: 1rem; border-radius: 4px; margin-top: 1rem; font-size: 0.85rem; color: #555; }
@@ -166,7 +167,7 @@ export class GiDetailView extends HTMLElement {
               <tr><th>Kanton</th><td>${p.canton || '-'}</td></tr>
               <tr><th>Gemeinde</th><td>${p.municipalityName || '-'} ${p.municipalityCode ? '(' + p.municipalityCode + ')' : ''}</td></tr>
               <tr><th>Untereinheit GB</th><td>${p.subUnitOfLandRegister || '-'} ${p.subUnitOfLandRegisterDesignation || ''}</td></tr>
-              <tr><th>Fläche</th><td>${p.landRegistryArea ? p.landRegistryArea + ' m²' : '-'}</td></tr>
+              <tr><th>Fläche</th><td>${formatNumber(p.landRegistryArea) ? formatNumber(p.landRegistryArea) + ' m²' : '-'}</td></tr>
               <tr><th>Flurnamen</th><td>${p.toponyms.join(', ') || '-'}</td></tr>
             </table>
             <div class="meta">Erstellt: ${this.formatDate(d.metadata.creationDate)}${d.metadata.updateDateCS ? ' | Aktualisiert: ' + this.formatDate(d.metadata.updateDateCS) : ''}</div>
@@ -209,8 +210,8 @@ export class GiDetailView extends HTMLElement {
                 <tr>
                   <td>${lc.label || lc.code || '-'}</td>
                   <td>${lc.objectStatusLabel || lc.objectStatusCode || '-'}</td>
-                  <td>${lc.area ?? '-'}</td>
-                  <td>${lc.areaShare ?? '-'}</td>
+                  <td>${formatNumber(lc.area) ?? '-'}</td>
+                  <td>${formatNumber(lc.areaShare) ?? '-'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -246,7 +247,7 @@ export class GiDetailView extends HTMLElement {
             <div class="building-item">
               <h4>Grundstück ${pp.number} – ${pp.typeLabel}</h4>
               <p>EGRID: ${pp.egrid}</p>
-              <p>Neue Parzellenfläche: ${pp.newParcelArea ? pp.newParcelArea + ' m²' : '-'}</p>
+              <p>Neue Parzellenfläche: ${formatNumber(pp.newParcelArea) ? formatNumber(pp.newParcelArea) + ' m²' : '-'}</p>
             </div>
           `).join('')}
         ` : '<p>Keine projektierten Objekte vorhanden.</p>'}
