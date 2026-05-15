@@ -651,6 +651,22 @@ export class GiSearchView extends HTMLElement {
           font-size: 0.8rem;
         }
         .detail-btn:hover { background: #a00; }
+        .result-actions {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 0.5rem;
+        }
+        .pdf-btn {
+          padding: 0.35rem 0.75rem;
+          background: #fff;
+          color: #c00;
+          border: 1px solid #c00;
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 0.8rem;
+        }
+        .pdf-btn:hover { background: #fff0f0; }
         .message { padding: 1rem; color: #666; font-size: 0.9rem; }
         .searching { padding: 1rem; color: #666; font-style: italic; }
       </style>
@@ -800,6 +816,16 @@ export class GiSearchView extends HTMLElement {
         const egrid = this._state.results?.[idx]?.egrid;
         if (egrid) this.navigateToDetail(egrid);
       });
+
+      const pdfBtn = this.shadowRoot?.querySelector(`[data-pdf="${idx}"]`);
+      pdfBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const egrid = this._state.results?.[idx]?.egrid;
+        if (egrid && this._config) {
+          const url = `${this._config.serviceBaseUrl}/extract/pdf/?EGRID=${egrid}&GEOMETRY=true&WITHIMAGES=true&LANG=${this._config.language}`;
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      });
     });
   }
 
@@ -888,7 +914,10 @@ export class GiSearchView extends HTMLElement {
               <div class="result-number">Grundstück ${this.escapeHtml(item.number)}</div>
               <div class="result-egrid">${this.escapeHtml(item.egrid)}</div>
               <div class="result-type">${this.escapeHtml(item.typeLabel)}</div>
-              <button class="detail-btn" data-detail="${idx}">Details anzeigen</button>
+              <div class="result-actions">
+                <button class="detail-btn" data-detail="${idx}">Details anzeigen</button>
+                <button class="pdf-btn" data-pdf="${idx}">PDF-Auszug</button>
+              </div>
             </div>
           `).join('')}
         </div>
