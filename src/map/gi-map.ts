@@ -226,6 +226,14 @@ export class GiMap extends HTMLElement {
   setZoom(zoom: number) {
     this._map?.getView().setZoom(zoom);
   }
+
+  fitExtent(extent?: [number, number, number, number]) {
+    if (!this._map || !extent) return;
+    this._map.getView().fit(extent, {
+      padding: [50, 50, 50, 50],
+      duration: 400,
+    });
+  }
 }
 
 customElements.define('gi-map', GiMap);

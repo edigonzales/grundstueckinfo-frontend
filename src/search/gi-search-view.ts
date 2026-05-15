@@ -89,6 +89,7 @@ export class GiSearchView extends HTMLElement {
 
     if (this._state.status === 'results') {
       this.highlightSelected();
+      this.fitToAllResults();
     }
   }
 
@@ -293,6 +294,7 @@ export class GiSearchView extends HTMLElement {
       this._state = { status: 'results', results: items, selectedIndex: 0 };
       this.updateView();
       this.highlightSelected();
+      this.fitToAllResults();
     } catch (err) {
       this._state = { status: 'error', message: 'Fehler bei der Abfrage.' };
       this.updateView();
@@ -314,6 +316,57 @@ export class GiSearchView extends HTMLElement {
     this._state = { ...this._state, selectedIndex: index };
     this.updateView();
     this.highlightSelected();
+    this.fitToItem(index);
+  }
+
+  private fitToItem(index: number) {
+    if (this._state.status !== 'results' || !this._state.results) return;
+    const item = this._state.results[index];
+    if (!item?.geometry?.exterior?.length) return;
+    const extent = this.getExtentFromPolygon(item.geometry.exterior);
+    if (!extent) return;
+    const mapEl = this.shadowRoot?.querySelector('gi-map') as any;
+    if (mapEl) {
+      mapEl.fitExtent(extent);
+    }
+  }
+
+  private fitToAllResults() {
+    if (this._state.status !== 'results' || !this._state.results || this._state.results.length === 0) return;
+    const extent = this.getTotalExtent(this._state.results);
+    if (!extent) return;
+    const mapEl = this.shadowRoot?.querySelector('gi-map') as any;
+    if (mapEl) {
+      mapEl.fitExtent(extent);
+    }
+  }
+
+  private getExtentFromPolygon(exterior: [number, number][]): [number, number, number, number] | undefined {
+    if (!exterior || exterior.length === 0) return undefined;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of exterior) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    return [minX, minY, maxX, maxY];
+  }
+
+  private getTotalExtent(items: GetEgridItem[]): [number, number, number, number] | undefined {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasExtent = false;
+    for (const item of items) {
+      if (!item.geometry?.exterior?.length) continue;
+      for (const [x, y] of item.geometry.exterior) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+      hasExtent = true;
+    }
+    return hasExtent ? [minX, minY, maxX, maxY] : undefined;
   }
 
   private toggleResultsExpanded() {
