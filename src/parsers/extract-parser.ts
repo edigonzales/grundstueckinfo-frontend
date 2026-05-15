@@ -43,6 +43,14 @@ function parseTypeText(el: Element): { code: string; label: string } {
   return { code, label };
 }
 
+function isRealObjectStatus(code?: string): boolean {
+  return code === 'actual' || code === 'real';
+}
+
+function isPlannedObjectStatus(code?: string): boolean {
+  return code === 'planned' || code === 'projected';
+}
+
 function parseLandCover(el: Element): LandCoverItem {
   const typeEl = getChildElements(el, 'Type')[0];
   const { code, label } = typeEl ? parseTypeText(typeEl) : { code: '', label: '' };
@@ -63,6 +71,7 @@ function parseLandCover(el: Element): LandCoverItem {
     objectStatusLabel,
     area: getFirstNumber(el, 'Area'),
     areaShare: getFirstNumber(el, 'AreaShare'),
+    egid: getFirstText(el, 'EGID') ?? undefined,
   };
 }
 
@@ -86,6 +95,7 @@ function parseSingleObject(el: Element): SingleObjectInfo {
     objectStatusLabel,
     area: getFirstNumber(el, 'Area'),
     areaShare: getFirstNumber(el, 'AreaShare'),
+    egid: getFirstText(el, 'EGID') ?? undefined,
   };
 }
 
@@ -95,11 +105,74 @@ function parseBuilding(el: Element): BuildingInfo {
     return {
       street: getFirstText(e, 'Street') ?? undefined,
       number: getFirstText(e, 'Number') ?? undefined,
-      plz: getFirstText(e, 'PLZ') ?? undefined,
+      plz: getFirstText(e, 'PostalCode') ?? undefined,
       city: getFirstText(e, 'City') ?? undefined,
     };
   });
-  return { egid, addresses: entrances };
+  return { egid, addresses: entrances, status: 'none' };
+}
+
+function resolveBuildingStatus(
+  buildings: BuildingInfo[],
+  landCover: LandCoverItem[],
+  singleObjects: SingleObjectInfo[]
+): void {
+  for (const building of buildings) {
+    const egidStr = building.egid !== undefined ? String(building.egid) : undefined;
+    if (!egidStr) {
+      building.status = 'none';
+      continue;
+    }
+
+    const lcMatchesActual = landCover.filter(
+      (lc) => lc.egid === egidStr && isRealObjectStatus(lc.objectStatusCode)
+    );
+    const soMatchesActual = singleObjects.filter(
+      (so) => so.egid === egidStr && isRealObjectStatus(so.objectStatusCode)
+    );
+
+    if (lcMatchesActual.length > 0 && soMatchesActual.length > 0) {
+      throw new Error(`Ambiguous building type match for EGID ${egidStr}.`);
+    }
+
+    if (lcMatchesActual.length > 0) {
+      building.status = 'actual';
+      building.origin = 'landcover';
+      building.typeLabel = lcMatchesActual[0].label || 'Gebäude';
+      continue;
+    }
+
+    if (soMatchesActual.length > 0) {
+      building.status = 'actual';
+      building.origin = 'singleobject';
+      building.typeLabel = soMatchesActual[0].label || 'Gebäude';
+      continue;
+    }
+
+    // No actual partner – check for planned
+    const lcMatchesPlanned = landCover.filter(
+      (lc) => lc.egid === egidStr && isPlannedObjectStatus(lc.objectStatusCode)
+    );
+    const soMatchesPlanned = singleObjects.filter(
+      (so) => so.egid === egidStr && isPlannedObjectStatus(so.objectStatusCode)
+    );
+
+    if (lcMatchesPlanned.length > 0) {
+      building.status = 'planned';
+      building.plannedTypeLabel = lcMatchesPlanned[0].label || 'Gebäude';
+      building.plannedAreaShare = lcMatchesPlanned[0].areaShare;
+      continue;
+    }
+
+    if (soMatchesPlanned.length > 0) {
+      building.status = 'planned';
+      building.plannedTypeLabel = soMatchesPlanned[0].label || 'Gebäude';
+      building.plannedAreaShare = soMatchesPlanned[0].areaShare;
+      continue;
+    }
+
+    building.status = 'none';
+  }
 }
 
 function parsePlanImage(el: Element, kind: PlanImage['kind']): PlanImage | undefined {
@@ -252,6 +325,9 @@ export function parseExtract(xmlText: string): ExtractViewModel {
   const landCover = getChildElements(realEstate, 'LandCover').map(parseLandCover);
   const buildings = getChildElements(realEstate, 'Building').map(parseBuilding);
   const singleObjects = getChildElements(realEstate, 'SingleObject').map(parseSingleObject);
+
+  // Resolve building statuses via joins
+  resolveBuildingStatus(buildings, landCover, singleObjects);
 
   // Projected Properties
   const projectedProperties: ProjectedPropertyInfo[] = [];

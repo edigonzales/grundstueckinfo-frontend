@@ -42,13 +42,15 @@ describe('ExtractParser', () => {
     expect(vm.disclaimer).toContain('Auszug');
   });
 
-  it('parses CH834642351474_mit_proj_geb.xml with buildings', () => {
+  it('parses CH834642351474_mit_proj_geb.xml with planned building status', () => {
     const vm = parseExtract(loadFixture('CH834642351474_mit_proj_geb.xml'));
     expect(vm.buildings.length).toBe(1);
     expect(vm.buildings[0].egid).toBe(191850652);
     expect(vm.buildings[0].addresses.length).toBe(3);
     expect(vm.buildings[0].addresses[0].street).toBe('Chemin des Oeuchettes');
     expect(vm.buildings[0].addresses[0].number).toBe('30a');
+    expect(vm.buildings[0].status).toBe('planned');
+    expect(vm.buildings[0].plannedTypeLabel).toBe('Gebaeude');
   });
 
   it('parses CH273542614644_mit_proj_liegen.xml with projected properties', () => {
@@ -88,5 +90,33 @@ describe('ExtractParser', () => {
 
   it('throws on invalid XML', () => {
     expect(() => parseExtract('not xml')).toThrow('XML parsing error');
+  });
+
+  it('throws on ambiguous building origin', () => {
+    const ambiguousXml = `<?xml version="1.0"?>
+      <GetExtractByIdResponse xmlns="http://test">
+        <Extract>
+          <RealEstate_DPR>
+            <Number>1</Number>
+            <EGRID>CH111111111111</EGRID>
+            <IdentDN>TEST</IdentDN>
+            <Type><Code>Test</Code><Text>Test</Text></Type>
+            <Building>
+              <EGID>999</EGID>
+            </Building>
+            <LandCover>
+              <Type><Code>A</Code><Text>LC</Text></Type>
+              <Objectstatus><Code>actual</Code></Objectstatus>
+              <EGID>999</EGID>
+            </LandCover>
+            <SingleObject>
+              <Type><Code>B</Code><Text>SO</Text></Type>
+              <Objectstatus><Code>actual</Code></Objectstatus>
+              <EGID>999</EGID>
+            </SingleObject>
+          </RealEstate_DPR>
+        </Extract>
+      </GetExtractByIdResponse>`;
+    expect(() => parseExtract(ambiguousXml)).toThrow('Ambiguous building type match for EGID 999');
   });
 });

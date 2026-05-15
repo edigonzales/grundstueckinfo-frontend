@@ -1,7 +1,7 @@
 import type { AppConfig } from '../config';
 import type { AvService } from '../services/av-service';
 import type { Router } from '../router';
-import type { ExtractViewModel, Office, LandCoverItem } from '../parsers/types';
+import type { ExtractViewModel, Office, LandCoverItem, BuildingInfo } from '../parsers/types';
 import { formatNumber } from '../utils/format-number';
 import './gi-static-plan';
 import './gi-accordion-section';
@@ -45,7 +45,7 @@ export class GiDetailView extends HTMLElement {
       if (err?.status === 204) {
         this._error = 'Für dieses Grundstück ist kein Auszug verfügbar.';
       } else {
-        this._error = 'Fehler beim Laden des Auszugs.';
+        this._error = err?.message || 'Fehler beim Laden des Auszugs.';
       }
       this.render();
     }
@@ -139,6 +139,47 @@ export class GiDetailView extends HTMLElement {
     return String(Math.round(percentage)) + ' %';
   }
 
+  private buildingOriginSortKey(origin?: string): number {
+    if (origin === 'landcover') return 10;
+    if (origin === 'singleobject') return 20;
+    if (origin === 'fallback') return 30;
+    return 40;
+  }
+
+  private renderBuildingTable(buildings: BuildingInfo[]): string {
+    if (buildings.length === 0) return '<p>Keine Gebäude vorhanden.</p>';
+
+    return `
+      <table class="landcover">
+        <thead><tr><th>Art</th><th>EGID</th><th>Adresse</th><th>PLZ</th><th>Ortschaft</th></tr></thead>
+        <tbody>
+          ${buildings.flatMap(b => {
+            if (b.addresses.length === 0) {
+              return [`
+                <tr>
+                  <td>${b.typeLabel || b.plannedTypeLabel || '-'}</td>
+                  <td>${b.egid ?? '-'}</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              `];
+            }
+            return b.addresses.map((a, idx) => `
+              <tr>
+                <td>${idx === 0 ? (b.typeLabel || b.plannedTypeLabel || '-') : ''}</td>
+                <td>${idx === 0 ? (b.egid ?? '-') : ''}</td>
+                <td>${[a.street, a.number].filter(Boolean).join(' ') || ''}</td>
+                <td>${a.plz || ''}</td>
+                <td>${a.city || ''}</td>
+              </tr>
+            `);
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
   private render() {
     if (!this.shadowRoot) return;
 
@@ -164,6 +205,15 @@ export class GiDetailView extends HTMLElement {
 
     const d = this._data!;
     const p = d.property;
+
+    const actualBuildings = d.buildings
+      .filter((b) => b.status === 'actual')
+      .sort((a, b) => this.buildingOriginSortKey(a.origin) - this.buildingOriginSortKey(b.origin));
+
+    const plannedBuildings = d.buildings
+      .filter((b) => b.status === 'planned');
+
+    const hasProjectedContent = d.projectedProperties.length > 0 || plannedBuildings.length > 0;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -192,9 +242,6 @@ export class GiDetailView extends HTMLElement {
         table.landcover th, table.landcover td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #eee; }
         table.landcover th { background: #f8f8f8; }
         table.landcover th.numeric, table.landcover td.numeric { text-align: right; }
-        .building-item { padding: 0.75rem; border: 1px solid #eee; border-radius: 4px; margin-bottom: 0.5rem; }
-        .building-item h4 { margin: 0 0 0.3rem; font-size: 0.95rem; }
-        .building-item p { margin: 0.15rem 0; font-size: 0.85rem; color: #555; }
       </style>
 
       <div class="top-bar">
@@ -278,14 +325,7 @@ export class GiDetailView extends HTMLElement {
         })()}
 
         <h2 style="margin-top:1.5rem;">Gebäude und Bauten</h2>
-        ${d.buildings.length > 0 ? d.buildings.map((b, i) => `
-          <div class="building-item">
-            <h4>Gebäude ${i + 1}${b.egid ? ' (EGID: ' + b.egid + ')' : ''}</h4>
-            ${b.addresses.map(a => `
-              <p>${a.street || ''} ${a.number || ''}, ${a.plz || ''} ${a.city || ''}</p>
-            `).join('')}
-          </div>
-        `).join('') : '<p>Keine Gebäude vorhanden.</p>'}
+        ${this.renderBuildingTable(actualBuildings)}
 
         ${d.offices.responsibleOffice ? `
           <div style="margin-top:1rem;">
@@ -296,19 +336,25 @@ export class GiDetailView extends HTMLElement {
       </gi-accordion-section>
 
       <gi-accordion-section title="Projektierte Objekte">
-        ${d.projectedProperties.length > 0 ? `
+        ${hasProjectedContent ? `
           <div style="margin-bottom:1rem;">
             <div class="plan-wrapper">
               <gi-static-plan id="projPlan"></gi-static-plan>
             </div>
           </div>
-          ${d.projectedProperties.map(pp => `
-            <div class="building-item">
-              <h4>Grundstück ${pp.number} – ${pp.typeLabel}</h4>
-              <p>EGRID: ${pp.egrid}</p>
-              <p>Neue Parzellenfläche: ${formatNumber(pp.newParcelArea) ? formatNumber(pp.newParcelArea) + ' m²' : '-'}</p>
-            </div>
-          `).join('')}
+          ${d.projectedProperties.length > 0 ? `
+            ${d.projectedProperties.map(pp => `
+              <div style="padding: 0.75rem; border: 1px solid #eee; border-radius: 4px; margin-bottom: 0.5rem;">
+                <h4 style="margin: 0 0 0.3rem; font-size: 0.95rem;">Grundstück ${pp.number} – ${pp.typeLabel}</h4>
+                <p style="margin: 0.15rem 0; font-size: 0.85rem; color: #555;">EGRID: ${pp.egrid}</p>
+                <p style="margin: 0.15rem 0; font-size: 0.85rem; color: #555;">Neue Parzellenfläche: ${formatNumber(pp.newParcelArea) ? formatNumber(pp.newParcelArea) + ' m²' : '-'}</p>
+              </div>
+            `).join('')}
+          ` : ''}
+          ${plannedBuildings.length > 0 ? `
+            <h2 style="margin-top:1rem;">Projektierte Gebäude und Bauten</h2>
+            ${this.renderBuildingTable(plannedBuildings)}
+          ` : ''}
         ` : '<p>Keine projektierten Objekte vorhanden.</p>'}
       </gi-accordion-section>
 

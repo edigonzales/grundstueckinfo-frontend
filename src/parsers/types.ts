@@ -48,11 +48,17 @@ export interface LandCoverItem {
   objectStatusLabel?: string;
   area?: number;
   areaShare?: number;
+  egid?: string;
 }
 
 export interface BuildingInfo {
   egid?: number;
   addresses: BuildingAddress[];
+  status: 'actual' | 'planned' | 'none';
+  origin?: 'landcover' | 'singleobject' | 'fallback';
+  typeLabel?: string;
+  plannedTypeLabel?: string;
+  plannedAreaShare?: number;
 }
 
 export interface BuildingAddress {
@@ -69,6 +75,7 @@ export interface SingleObjectInfo {
   objectStatusLabel?: string;
   area?: number;
   areaShare?: number;
+  egid?: string;
 }
 
 export interface ProjectedPropertyInfo {
