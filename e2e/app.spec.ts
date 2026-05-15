@@ -353,13 +353,13 @@ test.describe('Detailansicht', () => {
     await expect(page.getByText('Gebäude und Bauten')).toBeVisible();
   });
 
-  test('Eigentumsauskunft zeigt Dummy-Auth und Grundbuchamt', async ({ page }) => {
+  test('Eigentumsauskunft zeigt Auth-Button und Zuständige Stelle', async ({ page }) => {
     await page.goto('/#/detail/CH994641443597');
     await expect(page.getByRole('heading', { name: /926/ })).toBeVisible({ timeout: 10000 });
 
     await page.getByText('Alles aufklappen').click();
-    await expect(page.getByText('Zur Authentifizierung')).toBeVisible();
-    await expect(page.getByText('Grundbuchamt')).toBeVisible();
+    await expect(page.getByText('Authentifizierung')).toBeVisible();
+    await expect(page.getByText('Zuständige Stelle')).toBeVisible();
   });
 
   test('Projektierte Objekte erscheinen bei passender Fixture', async ({ page }) => {
