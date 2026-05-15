@@ -127,8 +127,8 @@ export class GiDetailView extends HTMLElement {
         .plan-wrapper { background: white; }
         h2 { font-size: 1.1rem; margin: 0 0 0.5rem; color: #333; }
         .meta { color: #666; font-size: 0.85rem; margin-top: 0.5rem; }
-        .disclaimer { background: #f8f8f8; padding: 1rem; border-radius: 4px; margin-top: 1rem; font-size: 0.85rem; color: #555; }
-        .office-box { padding: 1rem; border: 1px solid #eee; border-radius: 4px; margin-top: 0.5rem; }
+        .disclaimer { border-radius: 4px; margin-top: 1rem; font-size: 0.9rem; line-height: 1.5; }
+        .office-box { border-radius: 4px; margin-top: 0.5rem; }
         .office-box p { margin: 0.2rem 0; font-size: 0.9rem; }
         .placeholder-box { padding: 2rem; text-align: center; color: #999; border: 1px dashed #ddd; }
         .auth-box { padding: 1rem; background: #fff8f0; border: 1px solid #ffe0b0; border-radius: 4px; margin-bottom: 1rem; }
@@ -175,10 +175,7 @@ export class GiDetailView extends HTMLElement {
         </div>
         ${d.disclaimer ? `<div class="disclaimer">${d.disclaimer}</div>` : ''}
         ${d.offices.propertyInformationAuthority ? `
-          <div style="margin-top:1rem;">
-            <strong>Systemkontakt:</strong>
-            <div class="office-box">${this.renderOffice(d.offices.propertyInformationAuthority)}</div>
-          </div>
+          <div class="office-box">${this.renderOffice(d.offices.propertyInformationAuthority)}</div>
         ` : ''}
       </gi-accordion-section>
 
