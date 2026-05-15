@@ -147,7 +147,7 @@ export class GiDetailView extends HTMLElement {
   }
 
   private renderBuildingTable(buildings: BuildingInfo[]): string {
-    if (buildings.length === 0) return '<p>Keine Gebäude vorhanden.</p>';
+    if (buildings.length === 0) return '<p style="font-size:0.9rem;">Keine Gebäude vorhanden.</p>';
 
     return `
       <table class="landcover">
@@ -324,11 +324,11 @@ export class GiDetailView extends HTMLElement {
           ` : '<p>Keine Bodenbedeckungsanteile vorhanden.</p>';
         })()}
 
-        <h2 style="margin-top:1.5rem;">Gebäude und Bauten</h2>
+        <h2 style="margin-top:1.8rem;">Gebäude und Bauten</h2>
         ${this.renderBuildingTable(actualBuildings)}
 
         ${d.offices.responsibleOffice ? `
-          <div style="margin-top:1rem;">
+          <div style="margin-top:1.8rem;">
             <strong>Zuständige Stelle:</strong>
             <div class="office-box">${this.renderOffice(d.offices.responsibleOffice)}</div>
           </div>
@@ -354,6 +354,12 @@ export class GiDetailView extends HTMLElement {
           ${plannedBuildings.length > 0 ? `
             <h2 style="margin-top:1rem;">Projektierte Gebäude und Bauten</h2>
             ${this.renderBuildingTable(plannedBuildings)}
+          ` : ''}
+          ${d.offices.responsibleOffice ? `
+            <div style="margin-top:1.8rem;">
+              <strong>Zuständige Stelle:</strong>
+              <div class="office-box">${this.renderOffice(d.offices.responsibleOffice)}</div>
+            </div>
           ` : ''}
         ` : '<p>Keine projektierten Objekte vorhanden.</p>'}
       </gi-accordion-section>
