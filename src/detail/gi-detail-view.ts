@@ -170,7 +170,7 @@ export class GiDetailView extends HTMLElement {
               <tr><th>Fläche</th><td>${formatNumber(p.landRegistryArea) ? formatNumber(p.landRegistryArea) + ' m²' : '-'}</td></tr>
               <tr><th>Flurnamen</th><td>${p.toponyms.join(', ') || '-'}</td></tr>
             </table>
-            <div class="meta">Erstellt: ${this.formatDate(d.metadata.creationDate)}${d.metadata.updateDateCS ? ' | Aktualisiert: ' + this.formatDate(d.metadata.updateDateCS) : ''}</div>
+            <div class="meta">Erstellt: ${this.formatDate(d.metadata.creationDate)}${d.metadata.updateDateCS ? ' | Stand der amtlichen Vermessung: ' + this.formatDate(d.metadata.updateDateCS) : ''}</div>
           </div>
         </div>
         ${d.disclaimer ? `<div class="disclaimer">${d.disclaimer}</div>` : ''}
