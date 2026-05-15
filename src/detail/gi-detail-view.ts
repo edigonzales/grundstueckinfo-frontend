@@ -133,6 +133,7 @@ export class GiDetailView extends HTMLElement {
         .office-box p { margin: 0.2rem 0; font-size: 0.9rem; }
         .placeholder-box { padding: 2rem; text-align: center; color: #999; border: 1px dashed #ddd; }
         .auth-box { padding: 0rem; font-size: 0.9rem; margin-bottom: 1rem; }
+        .auth-btn-wrap { margin: 1.8rem 0; }
         table.landcover { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         table.landcover th, table.landcover td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #eee; }
         table.landcover th { background: #f8f8f8; }
@@ -182,7 +183,7 @@ export class GiDetailView extends HTMLElement {
       <gi-accordion-section title="Eigentumsauskunft">
         <div class="auth-box">
           <p>Die Eigentumsauskunft erfordert eine Authentifizierung.</p>
-          <p><button class="back-btn" id="authBtn">Authentifizierung</button></p>
+          <p class="auth-btn-wrap"><button class="back-btn" id="authBtn">Authentifizierung</button></p>
         </div>
         ${d.offices.landRegisterOffice ? `
           <div>
