@@ -29,6 +29,7 @@ export class GiSearchView extends HTMLElement {
   private _searchService!: SearchService;
   private _config: AppConfig | null = null;
   private _state: SearchState = { status: 'idle' };
+  private _resultsExpanded = true;
   private _suggestionState: SuggestionState = {
     status: 'idle',
     query: '',
@@ -315,6 +316,11 @@ export class GiSearchView extends HTMLElement {
     this.highlightSelected();
   }
 
+  private toggleResultsExpanded() {
+    this._resultsExpanded = !this._resultsExpanded;
+    this.updateView();
+  }
+
   private navigateToDetail(egrid: string) {
     this._router.navigate({ path: 'detail', egrid });
   }
@@ -521,13 +527,50 @@ export class GiSearchView extends HTMLElement {
           z-index: 10;
         }
         .panel-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
           padding: 0.75rem 1rem;
           border-bottom: 1px solid #eee;
           font-weight: 600;
           font-size: 0.95rem;
         }
+        .panel-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 2rem;
+          height: 2rem;
+          padding: 0;
+          border: none;
+          border-radius: 4px;
+          background: transparent;
+          color: #666;
+          cursor: pointer;
+        }
+        .panel-toggle:hover,
+        .panel-toggle:focus {
+          background: #f2f2f2;
+          color: #222;
+          outline: none;
+        }
+        .panel-toggle svg {
+          display: block;
+          transition: transform 0.25s ease;
+        }
+        .panel-toggle.collapsed svg {
+          transform: rotate(180deg);
+        }
         .panel-body {
+          overflow: hidden;
+          transition: max-height 0.25s ease-out, padding 0.25s ease-out;
+          max-height: 1000px;
           padding: 0.5rem 0;
+        }
+        .panel-body.collapsed {
+          max-height: 0;
+          padding-top: 0;
+          padding-bottom: 0;
         }
         .result-item {
           padding: 0.75rem 1rem;
@@ -672,6 +715,12 @@ export class GiSearchView extends HTMLElement {
       ${hasMessage ? `<div class="panel"><div class="message">${this.escapeHtml(this._state.message ?? '')}</div></div>` : ''}
     `;
     this.attachResultListeners(hasResults);
+    this.attachPanelToggleListener();
+  }
+
+  private attachPanelToggleListener() {
+    const toggleBtn = this.shadowRoot?.getElementById('panelToggleBtn');
+    toggleBtn?.addEventListener('click', () => this.toggleResultsExpanded());
   }
 
   private attachSuggestionListeners() {
@@ -761,13 +810,26 @@ export class GiSearchView extends HTMLElement {
 
     const items = this._state.results;
     const selectedIdx = this._state.selectedIndex ?? 0;
+    const expanded = this._resultsExpanded;
 
     return `
       <div class="panel">
         <div class="panel-header">
-          ${items.length} Grundstück${items.length > 1 ? 'e' : ''} gefunden
+          <span>${items.length} Grundstück${items.length > 1 ? 'e' : ''} gefunden</span>
+          <button
+            type="button"
+            class="panel-toggle ${expanded ? '' : 'collapsed'}"
+            id="panelToggleBtn"
+            aria-expanded="${expanded ? 'true' : 'false'}"
+            aria-controls="panelBody"
+            title="${expanded ? 'Zuklappen' : 'Aufklappen'}"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+              <path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/>
+            </svg>
+          </button>
         </div>
-        <div class="panel-body">
+        <div class="panel-body ${expanded ? '' : 'collapsed'}" id="panelBody">
           ${items.map((item, idx) => `
             <div class="result-item ${idx === selectedIdx ? 'selected' : ''}" data-index="${idx}">
               <div class="result-number">Grundstück ${this.escapeHtml(item.number)}</div>

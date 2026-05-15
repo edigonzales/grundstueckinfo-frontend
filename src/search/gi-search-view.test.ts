@@ -334,4 +334,51 @@ describe('GiSearchView', () => {
 
     expect(getEGRID).toHaveBeenCalledWith(2588066.5, 1226242.5);
   });
+
+  it('toggles the results panel with a chevron button', async () => {
+    vi.useFakeTimers();
+    stubSearchFeatures([
+      {
+        id: 1500467,
+        label: 'Chemin des Esserts 1 <b>2536 Plagne</b>',
+        detail: 'chemin des esserts 1 2536 plagne 449 sauge ch be',
+        origin: 'address',
+        y: 2588195.5,
+        x: 1226272.625,
+      },
+    ]);
+    const { el } = createView();
+
+    setInputValue(el, 'Che');
+    await runAutocompleteDebounce();
+    el.shadowRoot?.querySelector<HTMLElement>('.suggestion-item')?.click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const panelBody = el.shadowRoot?.querySelector('.panel-body');
+    expect(panelBody).not.toBeNull();
+    expect(panelBody?.classList.contains('collapsed')).toBe(false);
+
+    let toggleBtn = el.shadowRoot?.querySelector<HTMLButtonElement>('#panelToggleBtn');
+    expect(toggleBtn).not.toBeNull();
+    expect(toggleBtn?.getAttribute('aria-expanded')).toBe('true');
+
+    toggleBtn?.click();
+    await Promise.resolve();
+
+    const updatedPanelBody = el.shadowRoot?.querySelector('.panel-body');
+    expect(updatedPanelBody?.classList.contains('collapsed')).toBe(true);
+    const updatedToggleBtn = el.shadowRoot?.querySelector<HTMLButtonElement>('#panelToggleBtn');
+    expect(updatedToggleBtn?.classList.contains('collapsed')).toBe(true);
+    expect(updatedToggleBtn?.getAttribute('aria-expanded')).toBe('false');
+
+    updatedToggleBtn?.click();
+    await Promise.resolve();
+
+    const reopenedPanelBody = el.shadowRoot?.querySelector('.panel-body');
+    expect(reopenedPanelBody?.classList.contains('collapsed')).toBe(false);
+    const reopenedToggleBtn = el.shadowRoot?.querySelector<HTMLButtonElement>('#panelToggleBtn');
+    expect(reopenedToggleBtn?.classList.contains('collapsed')).toBe(false);
+    expect(reopenedToggleBtn?.getAttribute('aria-expanded')).toBe('true');
+  });
 });
