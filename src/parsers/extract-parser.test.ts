@@ -24,6 +24,17 @@ describe('ExtractParser', () => {
     expect(vm.metadata.creationDate).toBeTruthy();
   });
 
+  it('parses CH994641443597.xml with full geometry from RealEstate_DPR/Limit', () => {
+    const vm = parseExtract(loadFixture('CH994641443597.xml'));
+    expect(vm.propertyGeometry).toBeDefined();
+    expect(vm.propertyGeometry!.exterior.length).toBeGreaterThan(3);
+    // verify ring is closed
+    const ext = vm.propertyGeometry!.exterior;
+    expect(ext[0][0]).toBeCloseTo(ext[ext.length - 1][0]);
+    expect(ext[0][1]).toBeCloseTo(ext[ext.length - 1][1]);
+    expect(Array.isArray(vm.propertyGeometry!.interiors)).toBe(true);
+  });
+
   it('parses CH994641443597.xml with correct metadata and property', () => {
     const vm = parseExtract(loadFixture('CH994641443597.xml'));
     expect(vm.property.egrid).toBe('CH994641443597');

@@ -2,6 +2,11 @@ export interface Lv95Polygon {
   exterior: [number, number][];
 }
 
+export interface Lv95Surface {
+  exterior: [number, number][];
+  interiors: [number, number][][];
+}
+
 export interface GetEgridItem {
   egrid: string;
   number: string;
@@ -120,4 +125,5 @@ export interface ExtractViewModel {
   projectedProperties: ProjectedPropertyInfo[];
   offices: ExtractOffices;
   disclaimer?: string;
+  propertyGeometry?: Lv95Surface;
 }

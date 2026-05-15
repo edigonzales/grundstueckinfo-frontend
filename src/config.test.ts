@@ -43,7 +43,7 @@ describe('DEFAULT_CONFIG', () => {
     expect(DEFAULT_CONFIG.backgroundWmts.matrixSet).toBe('2056_27');
     expect(DEFAULT_CONFIG.backgroundWms.url).toContain('geodienste.ch');
     expect(DEFAULT_CONFIG.backgroundStrategy.switchScaleDenominator).toBe(5000);
-    expect(DEFAULT_CONFIG.startCenter).toEqual([2588387, 1226344]);
+    expect(DEFAULT_CONFIG.startCenter).toEqual([2588162, 1226286]);
   });
 
   it('matches the public runtime map defaults', () => {

@@ -390,13 +390,13 @@ export class GiDetailView extends HTMLElement {
 
     // Set plans
     const mainPlan = this.shadowRoot.querySelector('#mainPlan') as any;
-    if (mainPlan) mainPlan.setPlan(d.plans.main);
+    if (mainPlan) mainPlan.setPlan(d.plans.main, d.propertyGeometry);
 
     const landPlan = this.shadowRoot.querySelector('#landPlan') as any;
-    if (landPlan) landPlan.setPlan(d.plans.landDescription);
+    if (landPlan) landPlan.setPlan(d.plans.landDescription, d.propertyGeometry);
 
     const projPlan = this.shadowRoot.querySelector('#projPlan') as any;
-    if (projPlan) projPlan.setPlan(d.plans.projectedObjects);
+    if (projPlan) projPlan.setPlan(d.plans.projectedObjects, d.propertyGeometry);
 
     // Actions
     this.shadowRoot.getElementById('authBtn')?.addEventListener('click', () => window.open(this._config.authUrl, '_blank'));

@@ -39,7 +39,7 @@ const DEFAULT_CONFIG: AppConfig = {
   serviceBaseUrl: 'https://avws.sogeo.services',
   authUrl: '#/auth-dummy',
   projection: 'EPSG:2056',
-  startCenter: [2588387, 1226344],
+  startCenter: [2588162, 1226286],
   startZoom: 6,
   startExtent: [2420000, 1030000, 2900000, 1350000],
   searchServerUrlTemplate:

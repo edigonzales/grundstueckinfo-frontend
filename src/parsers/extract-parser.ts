@@ -3,6 +3,7 @@ import {
   getFirstText,
   getFirstNumber,
   parseLocalisedText,
+  parseLimitSurface,
 } from './xml-utils';
 import type {
   ExtractViewModel,
@@ -17,6 +18,7 @@ import type {
   ExtractOffices,
   ExtractPlans,
   PlanImage,
+  Lv95Surface,
 } from './types';
 
 function parseOffice(parent: Element, localName: string): Office | undefined {
@@ -314,6 +316,9 @@ export function parseExtract(xmlText: string): ExtractViewModel {
     property.typeLabel = parseLocalisedText(typeEl, 'Text') ?? getFirstText(typeEl, 'Text') ?? '';
   }
 
+  // Property geometry (Limit surface)
+  const propertyGeometry: Lv95Surface | undefined = parseLimitSurface(getChildElements(realEstate, 'Limit')[0]);
+
   // Plans
   const plans: ExtractPlans = {
     main: parsePlanImage(getChildElements(realEstate, 'PlanForMainPage')[0], 'main'),
@@ -354,5 +359,6 @@ export function parseExtract(xmlText: string): ExtractViewModel {
     projectedProperties,
     offices,
     disclaimer,
+    propertyGeometry,
   };
 }
