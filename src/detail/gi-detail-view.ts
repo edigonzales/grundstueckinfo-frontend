@@ -1,7 +1,7 @@
 import type { AppConfig } from '../config';
 import type { AvService } from '../services/av-service';
 import type { Router } from '../router';
-import type { ExtractViewModel, Office } from '../parsers/types';
+import type { ExtractViewModel, Office, LandCoverItem } from '../parsers/types';
 import { formatNumber } from '../utils/format-number';
 import './gi-static-plan';
 import './gi-accordion-section';
@@ -85,6 +85,60 @@ export class GiDetailView extends HTMLElement {
     `;
   }
 
+  private landCoverSortKey(code: string): number {
+    if (code === 'buildings') return 10;
+    if (code === 'hard_surfaced.roads_tracks') return 20;
+    if (code === 'hard_surfaced.sidewalk') return 21;
+    if (code === 'hard_surfaced.traffic_island') return 22;
+    if (code === 'hard_surfaced.railway') return 23;
+    if (code === 'hard_surfaced.airport') return 24;
+    if (code === 'hard_surfaced.waterbasin' || code === 'hard_surfaced.water_basin') return 25;
+    if (code === 'hard_surfaced.other_hard_surfaced' || code === 'hard_surfaced.other') return 26;
+    if (code.startsWith('hard_surfaced.')) return 29;
+    if (code === 'vegetated.meadow_arable_land_pasture' || code === 'vegetated.arable_land_meadow_pasture') return 30;
+    if (code === 'vegetated.intensive_cultivation.vineyard' || code === 'vegetated.vineyard') return 31;
+    if (code === 'vegetated.intensive_cultivation.other_intensive_cultivation' || code === 'vegetated.other_intensive_cultivation') return 32;
+    if (code === 'vegetated.garden') return 33;
+    if (code === 'vegetated.high_moor' || code === 'vegetated.marsh') return 34;
+    if (code === 'vegetated.other_vegetated' || code === 'vegetated.other') return 35;
+    if (code.startsWith('vegetated.')) return 39;
+    if (code === 'water.standing_water' || code === 'waters.standing_water') return 40;
+    if (code === 'water.flowing_water' || code === 'waters.flowing_water') return 41;
+    if (code === 'water.reed_belt' || code === 'waters.reed_belt') return 42;
+    if (code.startsWith('water.') || code.startsWith('waters.')) return 49;
+    if (code === 'wooded.dense_forest' || code === 'stocked.dense_forest') return 50;
+    if (code === 'wooded.wooded_pasture.dense' || code === 'stocked.wooded_pasture.dense') return 51;
+    if (code === 'wooded.wooded_pasture.sparse' || code === 'stocked.wooded_pasture.sparse') return 52;
+    if (code === 'wooded.other_wooded' || code === 'stocked.other_stocked') return 53;
+    if (code.startsWith('wooded.') || code.startsWith('stocked.')) return 59;
+    if (code === 'without_vegetation.rock' || code === 'vegetationless.rock') return 60;
+    if (code === 'without_vegetation.glacier_snowfield' || code === 'vegetationless.glacier_snowfield') return 61;
+    if (code === 'without_vegetation.scree_sand' || code === 'vegetationless.scree_sand') return 62;
+    if (code === 'without_vegetation.excavation_landfill' || code === 'vegetationless.excavation_landfill') return 63;
+    if (code === 'without_vegetation.other_without_vegetation' || code === 'vegetationless.other_vegetationless') return 64;
+    if (code.startsWith('without_vegetation.') || code.startsWith('vegetationless.')) return 69;
+    return 999;
+  }
+
+  private getGroupedLandCover(landCover: LandCoverItem[]): { label: string; code: string; areaShareSum: number }[] {
+    const filtered = landCover.filter((lc) => lc.objectStatusCode === 'actual');
+    const map = new Map<string, { label: string; code: string; areaShareSum: number }>();
+    for (const lc of filtered) {
+      const entry = map.get(lc.code);
+      if (entry) {
+        entry.areaShareSum += lc.areaShare ?? 0;
+      } else {
+        map.set(lc.code, { label: lc.label || lc.code, code: lc.code, areaShareSum: lc.areaShare ?? 0 });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => this.landCoverSortKey(a.code) - this.landCoverSortKey(b.code));
+  }
+
+  private formatAreaShare(percentage: number): string {
+    if (percentage < 1) return '< 1 %';
+    return String(Math.round(percentage)) + ' %';
+  }
+
   private render() {
     if (!this.shadowRoot) return;
 
@@ -137,6 +191,7 @@ export class GiDetailView extends HTMLElement {
         table.landcover { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         table.landcover th, table.landcover td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #eee; }
         table.landcover th { background: #f8f8f8; }
+        table.landcover th.numeric, table.landcover td.numeric { text-align: right; }
         .building-item { padding: 0.75rem; border: 1px solid #eee; border-radius: 4px; margin-bottom: 0.5rem; }
         .building-item h4 { margin: 0 0 0.3rem; font-size: 0.95rem; }
         .building-item p { margin: 0.15rem 0; font-size: 0.85rem; color: #555; }
@@ -200,21 +255,27 @@ export class GiDetailView extends HTMLElement {
           </div>
         </div>
         <h2>Bodenbedeckungsanteile</h2>
-        ${d.landCover.length > 0 ? `
-          <table class="landcover">
-            <thead><tr><th>Art</th><th>Status</th><th>Fläche (m²)</th><th>Anteil (m²)</th></tr></thead>
-            <tbody>
-              ${d.landCover.map(lc => `
-                <tr>
-                  <td>${lc.label || lc.code || '-'}</td>
-                  <td>${lc.objectStatusLabel || lc.objectStatusCode || '-'}</td>
-                  <td>${formatNumber(lc.area) ?? '-'}</td>
-                  <td>${formatNumber(lc.areaShare) ?? '-'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        ` : '<p>Keine Bodenbedeckungsanteile vorhanden.</p>'}
+        ${(() => {
+          const grouped = this.getGroupedLandCover(d.landCover);
+          const totalArea = p.landRegistryArea ?? 0;
+          return grouped.length > 0 ? `
+            <table class="landcover">
+              <thead><tr><th>Art</th><th class="numeric">Anteil (m²)</th><th class="numeric">Anteil in %</th></tr></thead>
+              <tbody>
+                ${grouped.map(g => {
+                  const percentage = totalArea > 0 ? (g.areaShareSum / totalArea) * 100 : 0;
+                  return `
+                    <tr>
+                      <td>${g.label || g.code || '-'}</td>
+                      <td class="numeric">${formatNumber(g.areaShareSum) ?? '-'}</td>
+                      <td class="numeric">${this.formatAreaShare(percentage)}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          ` : '<p>Keine Bodenbedeckungsanteile vorhanden.</p>';
+        })()}
 
         <h2 style="margin-top:1.5rem;">Gebäude und Bauten</h2>
         ${d.buildings.length > 0 ? d.buildings.map((b, i) => `
