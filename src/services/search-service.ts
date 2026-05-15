@@ -10,6 +10,21 @@ export interface SearchServerResult {
   egrid?: string;
 }
 
+interface SearchServerProperties {
+  id?: string | number;
+  label?: string;
+  detail?: string;
+  x?: number;
+  y?: number;
+  origin?: string;
+}
+
+interface SearchServerRawResult {
+  id?: string | number;
+  properties?: SearchServerProperties;
+  attrs?: SearchServerProperties;
+}
+
 export class SearchService {
   constructor(private config: AppConfig) {}
 
@@ -25,30 +40,34 @@ export class SearchService {
     return match ? match[0] : undefined;
   }
 
+  private normalizeResult(item: SearchServerRawResult): SearchServerResult {
+    const props = item.properties ?? item.attrs ?? {};
+    const origin = props.origin;
+    const egrid = this.extractEgrid(props.detail || props.label);
+
+    return {
+      id: String(item.id ?? props.id ?? ''),
+      label: props.label || '',
+      detail: props.detail,
+      // EN = properties.y (Easting), properties.x (Northing) – lt. SPEC
+      easting: props.y ?? 0,
+      northing: props.x ?? 0,
+      origin: origin === 'parcel' ? 'parcel' : 'address',
+      egrid,
+    };
+  }
+
   async search(searchText: string): Promise<SearchServerResult[]> {
     const url = this.buildUrl(searchText);
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`SearchServer error: ${res.status}`);
     }
-    const json = await res.json();
-    const results: SearchServerResult[] = [];
-    const features = json.results ?? [];
-    for (const feature of features) {
-      const props = feature.properties || {};
-      const origin = props.origin;
-      const egrid = this.extractEgrid(props.detail || props.label);
-      results.push({
-        id: feature.id || props.id || '',
-        label: props.label || '',
-        detail: props.detail,
-        // EN = properties.y (Easting), properties.x (Northing) – lt. SPEC
-        easting: props.y ?? 0,
-        northing: props.x ?? 0,
-        origin: origin === 'parcel' ? 'parcel' : 'address',
-        egrid,
-      });
-    }
-    return results;
+    const json = await res.json() as {
+      features?: SearchServerRawResult[];
+      results?: SearchServerRawResult[];
+    };
+    const rawResults = Array.isArray(json.features) ? json.features : (json.results ?? []);
+    return rawResults.map((item) => this.normalizeResult(item));
   }
 }

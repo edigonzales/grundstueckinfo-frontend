@@ -2,6 +2,7 @@ import { SearchService } from '../services/search-service';
 import '../map/gi-map';
 import type { AppConfig } from '../config';
 import type { AvService } from '../services/av-service';
+import type { SearchServerResult } from '../services/search-service';
 import type { GetEgridItem } from '../parsers/types';
 import type { Router } from '../router';
 
@@ -12,15 +13,38 @@ interface SearchState {
   message?: string;
 }
 
+interface SuggestionState {
+  status: 'idle' | 'loading' | 'open' | 'empty' | 'error';
+  query: string;
+  suggestions: SearchServerResult[];
+  activeIndex: number;
+}
+
+const MIN_SUGGESTION_LENGTH = 3;
+const SUGGESTION_DEBOUNCE_MS = 300;
+
 export class GiSearchView extends HTMLElement {
   private _avService!: AvService;
   private _router!: Router;
   private _searchService!: SearchService;
   private _config: AppConfig | null = null;
   private _state: SearchState = { status: 'idle' };
+  private _suggestionState: SuggestionState = {
+    status: 'idle',
+    query: '',
+    suggestions: [],
+    activeIndex: -1,
+  };
+  private _suggestionTimer: ReturnType<typeof setTimeout> | null = null;
+  private _suggestionRequestId = 0;
   private readonly _onMapClick = (e: Event) => {
     const detail = (e as CustomEvent).detail;
     void this.handleMapClick(detail.easting, detail.northing);
+  };
+  private readonly _onDocumentPointerDown = (e: Event) => {
+    const searchField = this.shadowRoot?.querySelector('.search-field');
+    if (searchField && e.composedPath().includes(searchField)) return;
+    this.closeSuggestions(false);
   };
 
   constructor() {
@@ -29,7 +53,15 @@ export class GiSearchView extends HTMLElement {
   }
 
   connectedCallback() {
-    this.render();
+    document.addEventListener('pointerdown', this._onDocumentPointerDown);
+    this.renderShell();
+    this.updateView();
+  }
+
+  disconnectedCallback() {
+    document.removeEventListener('pointerdown', this._onDocumentPointerDown);
+    this.clearSuggestionTimer();
+    this._suggestionRequestId += 1;
   }
 
   setServices(config: AppConfig, avService: AvService, router: Router) {
@@ -59,58 +91,210 @@ export class GiSearchView extends HTMLElement {
     }
   }
 
-  private async handleSearch(query: string) {
-    if (!query.trim()) return;
+  private clearSuggestionTimer() {
+    if (this._suggestionTimer) {
+      clearTimeout(this._suggestionTimer);
+      this._suggestionTimer = null;
+    }
+  }
 
-    this._state = { status: 'searching' };
-    this.render();
+  private handleQueryInput(query: string) {
+    this.clearSuggestionTimer();
+    this._suggestionRequestId += 1;
+
+    const trimmed = query.trim();
+    const requestId = this._suggestionRequestId;
+    this._suggestionState = {
+      status: 'idle',
+      query,
+      suggestions: trimmed.length >= MIN_SUGGESTION_LENGTH ? this._suggestionState.suggestions : [],
+      activeIndex: -1,
+    };
+    this.updateView();
+
+    if (trimmed.length < MIN_SUGGESTION_LENGTH) {
+      return;
+    }
+
+    this._suggestionTimer = setTimeout(() => {
+      void this.fetchSuggestions(trimmed, requestId);
+    }, SUGGESTION_DEBOUNCE_MS);
+  }
+
+  private async fetchSuggestions(query: string, requestId: number) {
+    if (requestId !== this._suggestionRequestId) return;
+
+    this._suggestionState = {
+      ...this._suggestionState,
+      status: 'loading',
+      activeIndex: -1,
+    };
+    this.updateView();
 
     try {
-      const results = await this._searchService.search(query);
-      if (results.length === 0) {
-        this._state = { status: 'results', message: 'Keine Treffer gefunden.' };
-        this.render();
-        return;
-      }
+      const suggestions = await this._searchService.search(query);
+      if (requestId !== this._suggestionRequestId) return;
 
-      // Handle first result (simplified for MVP)
-      const first = results[0];
-
-      if (first.origin === 'parcel' && first.egrid) {
-        // Direct extract for parcel with EGRID
-        this._router.navigate({ path: 'detail', egrid: first.egrid });
-      } else {
-        // GetEGRID for address or parcel without EGRID
-        await this.handleGetEgrid(first.easting, first.northing);
-      }
+      this._suggestionState = {
+        ...this._suggestionState,
+        status: suggestions.length > 0 ? 'open' : 'empty',
+        suggestions,
+        activeIndex: suggestions.length > 0 ? 0 : -1,
+      };
+      this.updateView();
     } catch (err) {
-      this._state = { status: 'error', message: 'Fehler bei der Suche.' };
-      this.render();
+      if (requestId !== this._suggestionRequestId) return;
+
+      this._suggestionState = {
+        ...this._suggestionState,
+        status: 'error',
+        suggestions: [],
+        activeIndex: -1,
+      };
+      this.updateView();
+    }
+  }
+
+  private handleInputFocus() {
+    const trimmed = this._suggestionState.query.trim();
+    if (
+      trimmed.length >= MIN_SUGGESTION_LENGTH &&
+      this._suggestionState.status === 'idle' &&
+      this._suggestionState.suggestions.length > 0
+    ) {
+      this._suggestionState = {
+        ...this._suggestionState,
+        status: 'open',
+        activeIndex: 0,
+      };
+      this.updateView();
+    }
+  }
+
+  private handleInputKeydown(e: KeyboardEvent) {
+    const suggestions = this._suggestionState.suggestions;
+
+    if (e.key === 'ArrowDown' && suggestions.length > 0) {
+      e.preventDefault();
+      const nextIndex =
+        this._suggestionState.status === 'open'
+          ? (this._suggestionState.activeIndex + 1) % suggestions.length
+          : 0;
+      this._suggestionState = {
+        ...this._suggestionState,
+        status: 'open',
+        activeIndex: nextIndex,
+      };
+      this.updateView();
+      return;
+    }
+
+    if (e.key === 'ArrowUp' && suggestions.length > 0) {
+      e.preventDefault();
+      const activeIndex = this._suggestionState.activeIndex < 0 ? 0 : this._suggestionState.activeIndex;
+      const nextIndex = (activeIndex - 1 + suggestions.length) % suggestions.length;
+      this._suggestionState = {
+        ...this._suggestionState,
+        status: 'open',
+        activeIndex: nextIndex,
+      };
+      this.updateView();
+      return;
+    }
+
+    if (e.key === 'Enter' && this._suggestionState.status === 'open' && suggestions.length > 0) {
+      e.preventDefault();
+      const activeIndex = this._suggestionState.activeIndex >= 0 ? this._suggestionState.activeIndex : 0;
+      void this.selectSuggestion(activeIndex);
+      return;
+    }
+
+    if (e.key === 'Escape' && this._suggestionState.status !== 'idle') {
+      e.preventDefault();
+      this.closeSuggestions();
+    }
+  }
+
+  private handleClearInput() {
+    this.clearSuggestionTimer();
+    this._suggestionRequestId += 1;
+    this._suggestionState = {
+      status: 'idle',
+      query: '',
+      suggestions: [],
+      activeIndex: -1,
+    };
+    this.updateView();
+    this.getInputElement()?.focus();
+  }
+
+  private async selectSuggestion(index: number) {
+    const suggestion = this._suggestionState.suggestions[index];
+    if (!suggestion) return;
+
+    this.clearSuggestionTimer();
+    this._suggestionRequestId += 1;
+    this._suggestionState = {
+      status: 'idle',
+      query: this.getSuggestionLabel(suggestion),
+      suggestions: [],
+      activeIndex: -1,
+    };
+    this.updateView();
+
+    await this.executeSearchResult(suggestion);
+  }
+
+  private async executeSearchResult(result: SearchServerResult) {
+    if (result.origin === 'parcel' && result.egrid) {
+      this._router.navigate({ path: 'detail', egrid: result.egrid });
+      return;
+    }
+
+    await this.handleGetEgrid(result.easting, result.northing);
+  }
+
+  private closeSuggestions(clear = false) {
+    this.clearSuggestionTimer();
+    const shouldUpdate =
+      this._suggestionState.status !== 'idle' ||
+      (clear && this._suggestionState.suggestions.length > 0);
+
+    this._suggestionState = {
+      ...this._suggestionState,
+      status: 'idle',
+      suggestions: clear ? [] : this._suggestionState.suggestions,
+      activeIndex: -1,
+    };
+
+    if (shouldUpdate) {
+      this.updateView();
     }
   }
 
   private async handleMapClick(easting: number, northing: number) {
+    this.closeSuggestions();
     await this.handleGetEgrid(easting, northing);
   }
 
   private async handleGetEgrid(easting: number, northing: number) {
     this._state = { status: 'searching' };
-    this.render();
+    this.updateView();
 
     try {
       const items = await this._avService.getEGRID(easting, northing);
       if (items.length === 0) {
         this._state = { status: 'results', message: 'An dieser Stelle wurde kein Grundstück gefunden.' };
-        this.render();
+        this.updateView();
         return;
       }
 
       this._state = { status: 'results', results: items, selectedIndex: 0 };
-      this.render();
+      this.updateView();
       this.highlightSelected();
     } catch (err) {
       this._state = { status: 'error', message: 'Fehler bei der Abfrage.' };
-      this.render();
+      this.updateView();
     }
   }
 
@@ -127,7 +311,7 @@ export class GiSearchView extends HTMLElement {
 
   private selectItem(index: number) {
     this._state = { ...this._state, selectedIndex: index };
-    this.render();
+    this.updateView();
     this.highlightSelected();
   }
 
@@ -135,12 +319,37 @@ export class GiSearchView extends HTMLElement {
     this._router.navigate({ path: 'detail', egrid });
   }
 
-  private render() {
-    if (!this.shadowRoot) return;
+  private getSuggestionLabel(result: SearchServerResult): string {
+    return this.stripTags(result.label || result.detail || result.id);
+  }
 
-    const hasResults = this._state.status === 'results' && this._state.results && this._state.results.length > 0;
-    const hasMessage = this._state.status === 'results' && this._state.message;
-    const isSearching = this._state.status === 'searching';
+  private stripTags(value: string): string {
+    return value.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private getInputElement(): HTMLInputElement | null {
+    return this.shadowRoot?.getElementById('searchInput') as HTMLInputElement | null;
+  }
+
+  private getSuggestionContainer(): HTMLElement | null {
+    return this.shadowRoot?.getElementById('suggestionContainer') as HTMLElement | null;
+  }
+
+  private getOverlayContainer(): HTMLElement | null {
+    return this.shadowRoot?.getElementById('mapOverlay') as HTMLElement | null;
+  }
+
+  private renderShell() {
+    if (!this.shadowRoot || this.shadowRoot.querySelector('.search-view')) return;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -176,30 +385,120 @@ export class GiSearchView extends HTMLElement {
           font-size: 1rem;
           line-height: 1.45;
         }
-        .search-bar { 
-          display: flex;
-          gap: 0.5rem;
+        .search-bar {
+          position: relative;
+          width: 100%;
+          max-width: 820px;
+        }
+        .search-field {
+          position: relative;
+          width: 100%;
+        }
+        .search-icon {
+          position: absolute;
+          left: 0.75rem;
+          top: 50%;
+          display: inline-flex;
+          width: 16px;
+          height: 16px;
+          color: #666;
+          pointer-events: none;
+          transform: translateY(-50%);
+        }
+        .search-icon svg {
+          display: block;
+          width: 16px;
+          height: 16px;
+        }
+        .clear-search {
+          position: absolute;
+          top: 50%;
+          right: 0.45rem;
+          display: inline-flex;
           align-items: center;
+          justify-content: center;
+          width: 2rem;
+          height: 2rem;
+          padding: 0;
+          border: none;
+          border-radius: 999px;
+          background: transparent;
+          color: #666;
+          cursor: pointer;
+          transform: translateY(-50%);
         }
-        input { 
-          flex: 1; 
+        .clear-search:hover,
+        .clear-search:focus {
+          background: #f2f2f2;
+          color: #222;
+          outline: none;
+        }
+        .clear-search[hidden] {
+          display: none;
+        }
+        input {
+          width: 100%;
           min-width: 0;
-          padding: 0.5rem 0.75rem; 
-          border: 1px solid #ccc; 
-          border-radius: 4px; 
-          font-size: 1rem; 
+          padding: 0.5rem 2.75rem 0.5rem 2.35rem;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 1rem;
+          line-height: 1.4;
         }
-        .search-bar button { 
-          padding: 0.5rem 1rem; 
-          background: #c00; 
-          color: white; 
-          border: none; 
-          border-radius: 4px; 
-          cursor: pointer; 
-          font-size: 0.9rem;
+        input:focus {
+          border-color: #999;
+          outline: 2px solid rgba(204, 0, 0, 0.18);
+          outline-offset: 0;
+        }
+        .suggestions {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          max-height: 260px;
+          overflow-y: auto;
+          background: white;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          z-index: 30;
+        }
+        .suggestion-item {
+          display: block;
+          width: 100%;
+          padding: 0.65rem 0.85rem;
+          border: none;
+          border-bottom: 1px solid #f0f0f0;
+          background: white;
+          color: #222;
+          cursor: pointer;
+          font: inherit;
+          text-align: left;
+        }
+        .suggestion-item:last-child {
+          border-bottom: none;
+        }
+        .suggestion-item:hover,
+        .suggestion-item.active {
+          background: #fff0f0;
+        }
+        .suggestion-label {
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
           white-space: nowrap;
         }
-        .search-bar button:hover { background: #a00; }
+        .suggestion-detail {
+          display: block;
+          margin-top: 0.15rem;
+          color: #666;
+          font-size: 0.8rem;
+        }
+        .suggestion-message {
+          padding: 0.75rem 0.85rem;
+          color: #666;
+          font-size: 0.9rem;
+        }
         .map-wrapper {
           flex: 1 1 auto;
           min-height: 0;
@@ -237,9 +536,9 @@ export class GiSearchView extends HTMLElement {
           transition: background 0.15s;
         }
         .result-item:hover { background: #f5f5f5; }
-        .result-item.selected { 
-          background: #fff0f0; 
-          border-left: 3px solid #c00; 
+        .result-item.selected {
+          background: #fff0f0;
+          border-left: 3px solid #c00;
           padding-left: calc(1rem - 3px);
         }
         .result-number { font-weight: 600; font-size: 1rem; }
@@ -263,45 +562,196 @@ export class GiSearchView extends HTMLElement {
         <h2>Grundstückinformation</h2>
         <p class="intro">Um Grundstückinformationen einzusehen, klicken sie auf das gewünschte Grundstück oder suchen sie eine Adresse oder ein Grundstück im Suchfeld.</p>
         <div class="search-bar">
-          <input type="text" id="searchInput" placeholder="Adresse, Ort, PLZ, Koordinate, Grundstück-Nr, EGRID oder EGID" />
-          <button id="searchBtn">Suchen</button>
+          <div class="search-field">
+            <span class="search-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+              </svg>
+            </span>
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Adresse, Ort, PLZ, Koordinate, Grundstück-Nr, EGRID oder EGID"
+              autocomplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls="searchSuggestions"
+            />
+            <button class="clear-search" id="clearSearchBtn" type="button" aria-label="Suche löschen" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+              </svg>
+            </button>
+            <div id="suggestionContainer"></div>
+          </div>
         </div>
         <div class="map-wrapper">
           <gi-map></gi-map>
-          ${this.renderPanel()}
-          ${isSearching ? '<div class="panel"><div class="searching">Suche läuft...</div></div>' : ''}
-          ${hasMessage ? `<div class="panel"><div class="message">${this._state.message}</div></div>` : ''}
+          <div id="mapOverlay"></div>
         </div>
       </div>
     `;
 
-    // Attach event listeners
-    const input = this.shadowRoot.getElementById('searchInput') as HTMLInputElement;
-    const btn = this.shadowRoot.getElementById('searchBtn');
+    const input = this.getInputElement();
+    input?.addEventListener('input', () => this.handleQueryInput(input.value));
+    input?.addEventListener('keydown', (e) => this.handleInputKeydown(e));
+    input?.addEventListener('focus', () => this.handleInputFocus());
 
-    if (input && btn) {
-      btn.addEventListener('click', () => this.handleSearch(input.value));
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') this.handleSearch(input.value);
-      });
-    }
-
-    // Attach result item listeners
-    if (hasResults && this._state.results) {
-      this._state.results.forEach((_, idx) => {
-        const item = this.shadowRoot?.querySelector(`[data-index="${idx}"]`);
-        item?.addEventListener('click', () => this.selectItem(idx));
-
-        const detailBtn = this.shadowRoot?.querySelector(`[data-detail="${idx}"]`);
-        detailBtn?.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const egrid = this._state.results?.[idx]?.egrid;
-          if (egrid) this.navigateToDetail(egrid);
-        });
-      });
-    }
+    const clearButton = this.shadowRoot.getElementById('clearSearchBtn');
+    clearButton?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.handleClearInput();
+    });
 
     this.configureMapAfterRender();
+  }
+
+  private updateView() {
+    this.renderShell();
+    this.updateInput();
+    this.updateSuggestions();
+    this.updateOverlay();
+  }
+
+  private updateInput() {
+    const input = this.getInputElement();
+    if (!input) return;
+
+    const isInputFocused = this.shadowRoot?.activeElement === input;
+    const selectionStart = input.selectionStart ?? this._suggestionState.query.length;
+    const selectionEnd = input.selectionEnd ?? this._suggestionState.query.length;
+
+    if (input.value !== this._suggestionState.query) {
+      input.value = this._suggestionState.query;
+      if (isInputFocused) {
+        const cursor = Math.min(selectionStart, input.value.length);
+        const cursorEnd = Math.min(selectionEnd, input.value.length);
+        input.setSelectionRange(cursor, cursorEnd);
+      }
+    }
+
+    const activeSuggestionId =
+      this._suggestionState.status === 'open' && this._suggestionState.activeIndex >= 0
+        ? `searchSuggestion-${this._suggestionState.activeIndex}`
+        : '';
+    const isSuggestionOpen = this._suggestionState.status !== 'idle';
+
+    input.setAttribute('aria-expanded', isSuggestionOpen ? 'true' : 'false');
+    if (activeSuggestionId) {
+      input.setAttribute('aria-activedescendant', activeSuggestionId);
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+
+    const clearButton = this.shadowRoot?.getElementById('clearSearchBtn') as HTMLButtonElement | null;
+    if (clearButton) {
+      clearButton.hidden = this._suggestionState.query.length === 0;
+    }
+  }
+
+  private updateSuggestions() {
+    const container = this.getSuggestionContainer();
+    if (!container) return;
+
+    container.innerHTML = this.renderSuggestions();
+    this.attachSuggestionListeners();
+  }
+
+  private updateOverlay() {
+    const container = this.getOverlayContainer();
+    if (!container) return;
+
+    const hasResults = this._state.status === 'results' && this._state.results && this._state.results.length > 0;
+    const hasMessage = this._state.status === 'results' && this._state.message;
+    const isSearching = this._state.status === 'searching';
+
+    container.innerHTML = `
+      ${this.renderPanel()}
+      ${isSearching ? '<div class="panel"><div class="searching">Suche läuft...</div></div>' : ''}
+      ${hasMessage ? `<div class="panel"><div class="message">${this.escapeHtml(this._state.message ?? '')}</div></div>` : ''}
+    `;
+    this.attachResultListeners(hasResults);
+  }
+
+  private attachSuggestionListeners() {
+    if (this._suggestionState.status !== 'open') return;
+
+    this._suggestionState.suggestions.forEach((_, idx) => {
+      const item = this.shadowRoot?.querySelector(`[data-suggestion="${idx}"]`);
+      item?.addEventListener('click', () => {
+        void this.selectSuggestion(idx);
+      });
+    });
+  }
+
+  private attachResultListeners(hasResults?: boolean) {
+    if (!hasResults || !this._state.results) return;
+
+    this._state.results.forEach((_, idx) => {
+      const item = this.shadowRoot?.querySelector(`[data-index="${idx}"]`);
+      item?.addEventListener('click', () => this.selectItem(idx));
+
+      const detailBtn = this.shadowRoot?.querySelector(`[data-detail="${idx}"]`);
+      detailBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const egrid = this._state.results?.[idx]?.egrid;
+        if (egrid) this.navigateToDetail(egrid);
+      });
+    });
+  }
+
+  private renderSuggestions(): string {
+    if (this._suggestionState.status === 'idle') {
+      return '';
+    }
+
+    if (this._suggestionState.status === 'loading') {
+      return `
+        <div class="suggestions" id="searchSuggestions" role="listbox">
+          <div class="suggestion-message">Vorschläge werden geladen...</div>
+        </div>
+      `;
+    }
+
+    if (this._suggestionState.status === 'empty') {
+      return `
+        <div class="suggestions" id="searchSuggestions" role="listbox">
+          <div class="suggestion-message">Keine Vorschläge gefunden.</div>
+        </div>
+      `;
+    }
+
+    if (this._suggestionState.status === 'error') {
+      return `
+        <div class="suggestions" id="searchSuggestions" role="listbox">
+          <div class="suggestion-message">Vorschläge konnten nicht geladen werden.</div>
+        </div>
+      `;
+    }
+
+    const activeIndex = this._suggestionState.activeIndex;
+    return `
+      <div class="suggestions" id="searchSuggestions" role="listbox">
+        ${this._suggestionState.suggestions.map((suggestion, idx) => {
+          const label = this.getSuggestionLabel(suggestion);
+          const detail = this.stripTags(suggestion.detail ?? '');
+          return `
+            <button
+              type="button"
+              class="suggestion-item ${idx === activeIndex ? 'active' : ''}"
+              id="searchSuggestion-${idx}"
+              role="option"
+              aria-selected="${idx === activeIndex ? 'true' : 'false'}"
+              data-suggestion="${idx}"
+            >
+              <span class="suggestion-label">${this.escapeHtml(label)}</span>
+              ${detail && detail !== label ? `<span class="suggestion-detail">${this.escapeHtml(detail)}</span>` : ''}
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
 
   private renderPanel(): string {
@@ -320,9 +770,9 @@ export class GiSearchView extends HTMLElement {
         <div class="panel-body">
           ${items.map((item, idx) => `
             <div class="result-item ${idx === selectedIdx ? 'selected' : ''}" data-index="${idx}">
-              <div class="result-number">Grundstück ${item.number}</div>
-              <div class="result-egrid">${item.egrid}</div>
-              <div class="result-type">${item.typeLabel}</div>
+              <div class="result-number">Grundstück ${this.escapeHtml(item.number)}</div>
+              <div class="result-egrid">${this.escapeHtml(item.egrid)}</div>
+              <div class="result-type">${this.escapeHtml(item.typeLabel)}</div>
               <button class="detail-btn" data-detail="${idx}">Details anzeigen</button>
             </div>
           `).join('')}
