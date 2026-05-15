@@ -1,5 +1,5 @@
 {
-  "mockEnabled": true,
+  "mockEnabled": false,
   "language": "de",
   "serviceBaseUrl": "https://avws.sogeo.services",
   "authUrl": "#/auth-dummy",
