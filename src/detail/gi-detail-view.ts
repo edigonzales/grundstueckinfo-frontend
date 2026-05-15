@@ -1,7 +1,7 @@
 import type { AppConfig } from '../config';
 import type { AvService } from '../services/av-service';
 import type { Router } from '../router';
-import type { ExtractViewModel, Office, LandCoverItem, BuildingInfo } from '../parsers/types';
+import type { ExtractViewModel, Office, LandCoverItem, BuildingInfo, ProjectedPropertyInfo } from '../parsers/types';
 import { formatNumber } from '../utils/format-number';
 import './gi-static-plan';
 import './gi-accordion-section';
@@ -144,6 +144,27 @@ export class GiDetailView extends HTMLElement {
     if (origin === 'singleobject') return 20;
     if (origin === 'fallback') return 30;
     return 40;
+  }
+
+  private renderProjectedPropertyTable(properties: ProjectedPropertyInfo[], originalEgrid: string, originalArea?: number): string {
+    if (properties.length === 0) return '<p style="font-size:0.9rem;">Keine projektierten Grundstücke vorhanden.</p>';
+
+    return `
+      <table class="landcover">
+        <thead><tr><th>Nummer</th><th>EGRID</th><th>Grundstückart</th><th class="numeric">Bisherige Fläche (m²)</th><th class="numeric">Neue Fläche (m²)</th></tr></thead>
+        <tbody>
+          ${properties.map(pp => `
+            <tr>
+              <td>${pp.number}</td>
+              <td>${pp.egrid}</td>
+              <td>${pp.typeLabel || '-'}</td>
+              <td class="numeric">${pp.egrid === originalEgrid ? (formatNumber(originalArea) ?? '-') : '-'}</td>
+              <td class="numeric">${formatNumber(pp.newParcelArea) ?? '-'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
   }
 
   private renderBuildingTable(buildings: BuildingInfo[]): string {
@@ -343,13 +364,8 @@ export class GiDetailView extends HTMLElement {
             </div>
           </div>
           ${d.projectedProperties.length > 0 ? `
-            ${d.projectedProperties.map(pp => `
-              <div style="padding: 0.75rem; border: 1px solid #eee; border-radius: 4px; margin-bottom: 0.5rem;">
-                <h4 style="margin: 0 0 0.3rem; font-size: 0.95rem;">Grundstück ${pp.number} – ${pp.typeLabel}</h4>
-                <p style="margin: 0.15rem 0; font-size: 0.85rem; color: #555;">EGRID: ${pp.egrid}</p>
-                <p style="margin: 0.15rem 0; font-size: 0.85rem; color: #555;">Neue Parzellenfläche: ${formatNumber(pp.newParcelArea) ? formatNumber(pp.newParcelArea) + ' m²' : '-'}</p>
-              </div>
-            `).join('')}
+            <h2 style="margin-top:1rem;">Projektierte Grundstücke</h2>
+            ${this.renderProjectedPropertyTable(d.projectedProperties, d.property.egrid, d.property.landRegistryArea)}
           ` : ''}
           ${plannedBuildings.length > 0 ? `
             <h2 style="margin-top:1rem;">Projektierte Gebäude und Bauten</h2>
