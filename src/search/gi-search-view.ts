@@ -658,14 +658,14 @@ export class GiSearchView extends HTMLElement {
         }
         .pdf-btn {
           padding: 0.35rem 0.75rem;
-          background: #fff;
+          background: transparent;
           color: #c00;
           border: 1px solid #c00;
           border-radius: 3px;
           cursor: pointer;
           font-size: 0.8rem;
         }
-        .pdf-btn:hover { background: #fff0f0; }
+        .pdf-btn:hover { background: #ffe0e0; }
         .message { padding: 1rem; color: #666; font-size: 0.9rem; }
         .searching { padding: 1rem; color: #666; font-style: italic; }
       </style>

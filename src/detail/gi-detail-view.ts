@@ -272,7 +272,10 @@ export class GiDetailView extends HTMLElement {
         .actions { display: flex; gap: 0.5rem; }
         .actions button { padding: 0.4rem 0.8rem; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
         .actions button:hover { background: #f5f5f5; }
-        .back-btn { padding: 0.4rem 0.8rem; background: white; border: 1px solid #c00; border-radius: 4px; cursor: pointer; font-size: 0.85rem; color: #c00; }
+        .actions .back-btn { padding: 0.4rem 0.8rem; background: white; border: 1px solid #c00; border-radius: 4px; cursor: pointer; font-size: 0.85rem; color: #c00; }
+        .actions .back-btn:hover { background: #f5f5f5; }
+        .auth-btn { padding: 0.4rem 0.8rem; background: white; border: 1px solid #c00; border-radius: 4px; cursor: pointer; font-size: 0.85rem; color: #c00; }
+        .auth-btn:hover { background: #f5f5f5; }
         .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1rem; }
         @media (max-width: 768px) { .overview-grid { grid-template-columns: 1fr; } }
         .data-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
@@ -334,7 +337,7 @@ export class GiDetailView extends HTMLElement {
       <gi-accordion-section title="Eigentumsauskunft">
         <div class="auth-box">
           <p>Die Eigentumsauskunft erfordert eine Authentifizierung.</p>
-          <p class="auth-btn-wrap"><button class="back-btn" id="authBtn">Authentifizierung</button></p>
+          <p class="auth-btn-wrap"><button class="auth-btn" id="authBtn">Authentifizierung</button></p>
         </div>
         ${d.offices.landRegisterOffice ? `
           <div>
