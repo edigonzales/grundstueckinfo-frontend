@@ -26,14 +26,14 @@ beruecksichtigen:
   `input/20260415 Grundstückinformation Benutzerführung Empfehlung_de.docx`
 - Webservice:
   `input/20250725 Entwurf Weisung Amtliche Vermessung Webservice de.docx`
-- GetEGRID-Beispiel: `input/getegrid.xml`
+- GetEGRID-Beispiel: `public/mock-data/getegrid.xml`
 - Extract-Beispiele:
-  - `input/CH994641443597.xml`
-  - `input/CH994641443597_eo_mit_egid.xml`
-  - `input/CH994641443597_eo_mit_egid_geb_mit_zwei_adressen.xml`
-  - `input/CH843546415105.xml`
-  - `input/CH273542614644_mit_proj_liegen.xml`
-  - `input/CH273542614644_ohne_proj_liegen.xml`
+  - `public/mock-data/CH994641443597.xml`
+  - `public/mock-data/CH994641443597_eo_mit_egid.xml`
+  - `public/mock-data/CH994641443597_eo_mit_egid_geb_mit_zwei_adressen.xml`
+  - `public/mock-data/CH843546415105.xml`
+  - `public/mock-data/CH273542614644_mit_proj_liegen.xml`
+  - `public/mock-data/CH273542614644_ohne_proj_liegen.xml`
 - Visuelle Referenzen:
   - `input/Screenshot 2026-05-13 at 16.40.38.png`: Suche mit Karte und
     Objekt-Auswahl
@@ -312,7 +312,7 @@ Extract-Mapping:
 - `PlanForMainPage`, `PlanForLandDescription`, `PlanForProjectedObjects` ->
   statische Plaene
 
-Hinweis: `input/CH273542614644_ohne_proj_liegen.xml` enthaelt entgegen dem
+Hinweis: `public/mock-data/CH273542614644_ohne_proj_liegen.xml` enthaelt entgegen dem
 Namen trotzdem `Mutation`. Das wird in README/STATUS als Datenproblem
 dokumentiert.
 
@@ -379,4 +379,4 @@ Globale Detailaktionen:
 - Desktop-Prototyp ist Ziel des MVP; Mobile kommt spaeter.
 - Visuelle Umsetzung orientiert sich an den Screenshots, nicht an einem
   spezifischen kantonalen Designsystem.
-- Der Coding-Agent darf die Artefakte in `input/` lesen und in Tests verwenden.
+- Der Coding-Agent darf die Artefakte in `public/mock-data/` und `input/` lesen und in Tests verwenden.

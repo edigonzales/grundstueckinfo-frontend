@@ -4,34 +4,44 @@ import type { AppConfig } from '../config';
 import type { GetEgridItem, ExtractViewModel } from '../parsers/types';
 import type { AvService, ServiceError } from './av-service';
 
-// Vite ?raw imports: XML files loaded as strings at build time
-import getegridXml from '../../input/getegrid.xml?raw';
-import ch994Xml from '../../input/CH994641443597.xml?raw';
-import ch843Xml from '../../input/CH843546415105.xml?raw';
-import ch834Xml from '../../input/CH834642351474_mit_proj_geb.xml?raw';
-import ch273Xml from '../../input/CH273542614644_mit_proj_liegen.xml?raw';
-import ch273ohneXml from '../../input/CH273542614644_ohne_proj_liegen.xml?raw';
+const MOCK_XML_BASE_PATH = import.meta.env.VITE_MOCK_XML_BASE_PATH || '/mock-data';
 
-const fixtures: Record<string, string> = {
-  getegrid: getegridXml,
-  CH994641443597: ch994Xml,
-  CH843546415105: ch843Xml,
-  CH834642351474: ch834Xml,
-  CH273542614644: ch273Xml,
-  CH273542614644ohne: ch273ohneXml,
-};
+// Lazily loaded XML fixture contents
+const fixtureCache: Record<string, string> = {};
+
+async function loadMockXml(filename: string): Promise<string> {
+  if (fixtureCache[filename]) {
+    return fixtureCache[filename];
+  }
+  const response = await fetch(`${MOCK_XML_BASE_PATH}/${filename}`);
+  if (!response.ok) {
+    throw new Error(`Failed to load mock XML ${filename}: ${response.statusText}`);
+  }
+  const text = await response.text();
+  fixtureCache[filename] = text;
+  return text;
+}
 
 export class MockAvService implements AvService {
-  getEGRID(_east: number, _north: number): Promise<GetEgridItem[]> {
-    return Promise.resolve(parseGetEgridResponse(fixtures.getegrid));
+  async getEGRID(_east: number, _north: number): Promise<GetEgridItem[]> {
+    const xml = await loadMockXml('getegrid.xml');
+    return parseGetEgridResponse(xml);
   }
 
-  getExtractById(egrid: string): Promise<ExtractViewModel> {
-    const xml = fixtures[egrid];
-    if (!xml) {
+  async getExtractById(egrid: string): Promise<ExtractViewModel> {
+    const filenameMap: Record<string, string> = {
+      CH994641443597: 'CH994641443597.xml',
+      CH843546415105: 'CH843546415105.xml',
+      CH834642351474: 'CH834642351474_mit_proj_geb.xml',
+      CH273542614644: 'CH273542614644_mit_proj_liegen.xml',
+      CH273542614644ohne: 'CH273542614644_ohne_proj_liegen.xml',
+    };
+    const filename = filenameMap[egrid];
+    if (!filename) {
       const err: ServiceError = { status: 204, message: 'No data for egrid' };
       return Promise.reject(err);
     }
+    const xml = await loadMockXml(filename);
     return Promise.resolve(parseExtract(xml));
   }
 }

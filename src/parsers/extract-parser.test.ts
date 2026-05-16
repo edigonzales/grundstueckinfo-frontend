@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { parseExtract } from './extract-parser';
 
 function loadFixture(name: string): string {
-  return readFileSync(join(__dirname, '../../input', name), 'utf-8');
+  return readFileSync(join(__dirname, '../../public/mock-data', name), 'utf-8');
 }
 
 describe('ExtractParser', () => {

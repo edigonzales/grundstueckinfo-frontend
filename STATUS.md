@@ -36,15 +36,12 @@ Status: done
 
 ## Bekannte Datenauffaelligkeiten
 
-- `input/CH273542614644_ohne_proj_liegen.xml` enthaelt trotz Dateiname
-  `Mutation/projectedProperty`.
-
-## Artefakt-Referenzen
-
-- Benutzerfuehrung/UI:
+- `public/mock-data/CH273542614644_ohne_proj_liegen.xml` enthaelt trotz Dateiname
+  doch `Mutation/projectedProperty`. Dies ist ein Datenproblem der Fixture.
+- Grundstückinformation Benutzerführung Empfehlung_de.docx: siehe
   `input/20260415 Grundstückinformation Benutzerführung Empfehlung_de.docx`
-- Webservice:
+- Entwurf Weisung Amtliche Vermessung Webservice de.docx: siehe
   `input/20250725 Entwurf Weisung Amtliche Vermessung Webservice de.docx`
-- GetEGRID-Beispiel: `input/getegrid.xml`
-- Extract-Beispiele: `input/CH*.xml`
+- GetEGRID-Beispiel: `public/mock-data/getegrid.xml`
+- Extract-Beispiele: `public/mock-data/CH*.xml`
 - Screenshot-Referenzen: `input/Screenshot*.png`

@@ -116,7 +116,7 @@ nicht online ist oder kein Netzwerk verfuegbar ist. Standardmaessig auf `true`.
 
 ### Fixture-Dateien
 
-Die verbindlichen Referenzen liegen in `input/`:
+Die verbindlichen Referenzen liegen in `public/mock-data/`:
 
 - `getegrid.xml` - Antwort fuer `GetEGRID` (2 Liegenschaften)
 - `CH994641443597.xml` - Standard-Extract mit Bodenbedeckung
@@ -130,8 +130,8 @@ Die Fixtures werden per Vite `?raw`-Import in den Build eingebunden (kein Node.j
 
 ### MockAvService
 
-- `getEGRID()` → parst `input/getegrid.xml`
-- `getExtractById(egrid)` → parst `input/CH*.xml` anhand EGRID
+- `getEGRID()` → parst `public/mock-data/getegrid.xml`
+- `getExtractById(egrid)` → parst `public/mock-data/CH*.xml` anhand EGRID
 - Unbekannte EGRID → Status 204 (kein Inhalt)
 
 ### LiveAvService
@@ -304,9 +304,9 @@ npm run test:e2e
 
 ## Bekannte Datenauffaelligkeiten
 
-- `input/CH273542614644_ohne_proj_liegen.xml` enthaelt trotz Dateinamen
+- `public/mock-data/CH273542614644_ohne_proj_liegen.xml` enthaelt trotz Dateinamen
   `Mutation/projectedProperty`. Dies ist ein Datenproblem der Fixture.
-- Die Extract-Parser-Tests verwenden die XML-Dateien aus `input/` als Fixtures.
+- Die Extract-Parser-Tests verwenden die XML-Dateien aus `public/mock-data/` als Fixtures.
 
 ## Technische Entscheidungen
 

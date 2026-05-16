@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseGetEgridResponse } from './getegrid-parser';
 
-const getegridXml = readFileSync(join(__dirname, '../../input/getegrid.xml'), 'utf-8');
+const getegridXml = readFileSync(join(__dirname, '../../public/mock-data/getegrid.xml'), 'utf-8');
 
 describe('GetEgridParser', () => {
   it('parses getegrid.xml into two items with correct egrid', () => {

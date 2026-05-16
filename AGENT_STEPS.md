@@ -10,8 +10,8 @@
 - UI-Komponenten als Web Components kapseln.
 - XML niemals direkt in UI-Komponenten parsen.
 - Tests sind Teil jedes Schrittes, nicht nachgelagert.
-- Vor jedem Schritt die relevanten Artefakte in `input/` erneut lesen, wenn sie
-  fuer den Schritt massgebend sind.
+- Vor jedem Schritt die relevanten Artefakte in `public/mock-data/` und `input/`
+  erneut lesen, wenn sie fuer den Schritt massgebend sind.
 
 ## Schritt 1: Projektbasis
 
@@ -64,12 +64,12 @@ Aufgaben:
 - `ExtractParser` implementieren.
 - Namespace-tolerante XML-Helfer implementieren.
 - Typisierte ViewModels definieren.
-- Fixtures direkt aus `input/` in Tests verwenden.
+- Fixtures direkt aus `public/mock-data/` in Tests verwenden.
 
 Akzeptanz:
 
-- `input/getegrid.xml` ergibt zwei Treffer.
-- Alle `input/CH*.xml` lassen sich parsen.
+- `public/mock-data/getegrid.xml` ergibt zwei Treffer.
+- Alle `public/mock-data/CH*.xml` lassen sich parsen.
 - Tests pruefen mindestens Grundstuecknummer, EGRID, Typ, Gemeinde, Flaeche,
   Plaene, LandCover, Buildings, Offices und Mutations.
 - UI enthaelt keine XML-Parsing-Logik.
@@ -80,7 +80,7 @@ Akzeptanz:
 Aufgaben:
 
 - `AvService` mit Interface implementieren.
-- Mock-Modus verwendet XML-Dateien aus `input/`.
+- Mock-Modus verwendet XML-Dateien aus `public/mock-data/`.
 - Live-Modus baut URLs gemaess `SPEC.md`.
 - HTTP-Statuscodes `200`, `204`, `500` behandeln.
 - `SearchService` fuer geo.admin SearchServer implementieren.
@@ -191,8 +191,8 @@ Unit-Tests:
 
 - Config-Fallbacks und externe Config.
 - Hash-Router.
-- `GetEgridParser` mit `input/getegrid.xml`.
-- `ExtractParser` mit allen `input/CH*.xml`.
+- `GetEgridParser` mit `public/mock-data/getegrid.xml`.
+- `ExtractParser` mit allen `public/mock-data/CH*.xml`.
 - Service-URL-Building.
 - SearchServer-Koordinatenordnung.
 - EGRID-Regex aus Parcel-Treffern.
