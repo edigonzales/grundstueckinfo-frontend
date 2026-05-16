@@ -60,7 +60,7 @@ export class LiveAvService implements AvService {
   }
 
   async getExtractById(egrid: string): Promise<ExtractViewModel> {
-    const url = `${this.config.serviceBaseUrl}/extract/xml/?EGRID=${egrid}&GEOMETRY=true&WITHIMAGES=true&LANG=${this.config.language}`;
+    const url = `${this.config.serviceBaseUrl}/extract/xml/?EGRID=${egrid}&GEOMETRY=true&LANG=${this.config.language}`;
     const res = await this.fetchXml(url);
     const xml = await res.text();
     return parseExtract(xml);

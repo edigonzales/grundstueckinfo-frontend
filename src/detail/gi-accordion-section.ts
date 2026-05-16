@@ -30,9 +30,16 @@ export class GiAccordionSection extends HTMLElement {
       this.removeAttribute('open');
     }
     this.render();
+    if (this._open) {
+      this.dispatchEvent(new CustomEvent('accordion-open', {
+        bubbles: true,
+        composed: true,
+      }));
+    }
   }
 
   setOpen(open: boolean) {
+    const wasClosed = !this._open;
     this._open = open;
     if (open) {
       this.setAttribute('open', '');
@@ -40,6 +47,12 @@ export class GiAccordionSection extends HTMLElement {
       this.removeAttribute('open');
     }
     this.render();
+    if (wasClosed && this._open) {
+      this.dispatchEvent(new CustomEvent('accordion-open', {
+        bubbles: true,
+        composed: true,
+      }));
+    }
   }
 
   isOpen(): boolean {

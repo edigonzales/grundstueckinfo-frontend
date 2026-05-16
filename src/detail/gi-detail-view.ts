@@ -14,10 +14,38 @@ export class GiDetailView extends HTMLElement {
   private _data: ExtractViewModel | null = null;
   private _error: string | null = null;
   private _loading = true;
+  private _onAccordionOpenBound = this.onAccordionOpen.bind(this);
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+  }
+
+  connectedCallback() {
+    this.shadowRoot?.addEventListener('accordion-open', this._onAccordionOpenBound);
+  }
+
+  disconnectedCallback() {
+    this.shadowRoot?.removeEventListener('accordion-open', this._onAccordionOpenBound);
+  }
+
+  private onAccordionOpen(event: Event) {
+    const section = event.target as HTMLElement;
+    const title = section.getAttribute('title') || '';
+    
+    requestAnimationFrame(() => {
+      if (title === 'Grundstückbeschreibung') {
+        const el = this.shadowRoot?.querySelector('#landPlan') as any;
+        if (el && this._data?.plans.landDescription) {
+          el.setPlan(this._data.plans.landDescription, this._data.propertyGeometry);
+        }
+      } else if (title === 'Projektierte Objekte') {
+        const el = this.shadowRoot?.querySelector('#projPlan') as any;
+        if (el && this._data?.plans.projectedObjects) {
+          el.setPlan(this._data.plans.projectedObjects, this._data.propertyGeometry);
+        }
+      }
+    });
   }
 
   setEgrid(egrid: string) {
@@ -388,15 +416,11 @@ export class GiDetailView extends HTMLElement {
       </gi-accordion-section>
     `;
 
-    // Set plans
+    // Main-Plan sofort setzen (ist sichtbar)
     const mainPlan = this.shadowRoot.querySelector('#mainPlan') as any;
     if (mainPlan) mainPlan.setPlan(d.plans.main, d.propertyGeometry);
 
-    const landPlan = this.shadowRoot.querySelector('#landPlan') as any;
-    if (landPlan) landPlan.setPlan(d.plans.landDescription, d.propertyGeometry);
-
-    const projPlan = this.shadowRoot.querySelector('#projPlan') as any;
-    if (projPlan) projPlan.setPlan(d.plans.projectedObjects, d.propertyGeometry);
+    // Land- und Proj-Plan: Render erfolgt erst bei accordion-open Event
 
     // Actions
     this.shadowRoot.getElementById('authBtn')?.addEventListener('click', () => window.open(this._config.authUrl, '_blank'));

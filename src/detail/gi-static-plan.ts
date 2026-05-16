@@ -3,13 +3,13 @@ import olCss from 'ol/ol.css?raw';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import { Image as ImageLayer, Vector as VectorLayer } from 'ol/layer';
-import Static from 'ol/source/ImageStatic';
+import { ImageWMS } from 'ol/source';
 import VectorSource from 'ol/source/Vector';
 import { Polygon } from 'ol/geom';
 import { Feature } from 'ol';
 import { Style, Stroke } from 'ol/style';
-import { getCenter } from 'ol/extent';
 import { registerSwissProjection } from '../map/map-utils';
+import { parseWmsGetMapUrl } from './wms-url-utils';
 
 registerSwissProjection();
 
@@ -19,8 +19,6 @@ const RUBBERBAND_WIDTH = 6;
 
 export class GiStaticPlan extends HTMLElement {
   private _map: Map | null = null;
-  private _imageLayer: ImageLayer<Static> | null = null;
-  private _vectorLayer: VectorLayer<VectorSource> | null = null;
   private _vectorSource = new VectorSource();
 
   constructor() {
@@ -34,38 +32,21 @@ export class GiStaticPlan extends HTMLElement {
       return;
     }
 
-    // Wir brauchen mindestens eine BBox, sonst können wir nicht georeferenzieren.
     if (!plan.bbox) {
-      this.renderImageFallback(plan.imageDataUrl || plan.referenceWmsUrl!);
+      this.renderImageFallback(plan.referenceWmsUrl || plan.imageDataUrl || '');
       return;
     }
 
-    const url = plan.imageDataUrl || plan.referenceWmsUrl!;
-    this.renderStaticMap(url, plan.bbox, geometry);
+    if (plan.referenceWmsUrl) {
+      // ImageWMS-Pfad
+      this.renderWmsMap(plan.referenceWmsUrl, plan.bbox, geometry);
+    } else if (plan.imageDataUrl) {
+      // Base64-Fallback: einfaches Bild
+      this.renderImageFallback(plan.imageDataUrl);
+    }
   }
 
-  private renderStaticMap(url: string, bbox: [number, number, number, number], geometry?: Lv95Surface) {
-    if (!this.shadowRoot) return;
-
-    // Temporäres Bild laden, um Originalgrösse zu ermitteln
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      this.initOlMap(url, bbox, [img.naturalWidth, img.naturalHeight], geometry);
-    };
-    img.onerror = () => {
-      // Fallback: ohne bekannte Grösse trotzdem versuchen
-      this.initOlMap(url, bbox, undefined, geometry);
-    };
-    img.src = url;
-  }
-
-  private initOlMap(
-    url: string,
-    bbox: [number, number, number, number],
-    imageSize: [number, number] | undefined,
-    geometry?: Lv95Surface
-  ) {
+  private renderWmsMap(url: string, bbox: [number, number, number, number], geometry?: Lv95Surface) {
     if (!this.shadowRoot) return;
 
     // Bestehende Map aufräumen
@@ -77,22 +58,15 @@ export class GiStaticPlan extends HTMLElement {
     const [minX, minY, maxX, maxY] = bbox;
     const extent = [minX, minY, maxX, maxY] as [number, number, number, number];
 
-    // Container-Grösse bestimmen
-    const containerW = Math.max(100, this.clientWidth || 800);
-    let containerH: number;
-    if (imageSize) {
-      const [imgW, imgH] = imageSize;
-      containerH = containerW * (imgH / imgW);
-    } else {
-      containerH = containerW * ((maxY - minY) / (maxX - minX));
-    }
-    containerH = Math.max(100, containerH);
-
     this.shadowRoot.innerHTML = `
       <style>
         ${olCss}
         :host { display: block; }
-        .map-target { width: 100%; height: ${Math.round(containerH)}px; }
+        .map-target { 
+          width: 100%; 
+          aspect-ratio: ${(maxX - minX) / (maxY - minY)}; 
+          border: 1px solid #ddd;
+        }
       </style>
       <div class="map-target"></div>
     `;
@@ -100,16 +74,18 @@ export class GiStaticPlan extends HTMLElement {
     const mapTarget = this.shadowRoot.querySelector('.map-target') as HTMLDivElement;
     if (!mapTarget) return;
 
-    const source = new Static({
-      url,
-      imageExtent: extent,
+    const { url: wmsBaseUrl, params } = parseWmsGetMapUrl(url);
+
+    const source = new ImageWMS({
+      url: wmsBaseUrl,
+      params,
+      ratio: 1,
       projection: EPSG_2056,
-      crossOrigin: 'anonymous',
     });
 
-    this._imageLayer = new ImageLayer({ source, zIndex: 1 });
+    const imageLayer = new ImageLayer({ source, zIndex: 1 });
 
-    this._vectorLayer = new VectorLayer({
+    const vectorLayer = new VectorLayer({
       source: this._vectorSource,
       style: new Style({
         stroke: new Stroke({
@@ -121,32 +97,20 @@ export class GiStaticPlan extends HTMLElement {
       zIndex: 2,
     });
 
+    const view = new View({
+      projection: EPSG_2056,
+      center: [(minX + maxX) / 2, (minY + maxY) / 2],
+    });
+
     this._map = new Map({
       target: mapTarget,
       controls: [],
       interactions: [],
-      layers: [this._imageLayer, this._vectorLayer],
-      view: new View({
-        projection: EPSG_2056,
-        center: getCenter(extent),
-        zoom: 1,
-      }),
+      layers: [imageLayer, vectorLayer],
+      view,
     });
 
-    // Jetzt exakt fitten
-    const view = this._map.getView();
-    const size = [containerW, containerH];
-    view.fit(extent, {
-      size,
-      padding: [0, 0, 0, 0],
-      callback: () => {
-        // Nach dem Fitten die Auflösung fixieren, damit sich nichts verschiebt
-        const resolution = view.getResolution();
-        if (resolution !== undefined) {
-          view.setResolution(resolution);
-        }
-      },
-    });
+    view.fit(extent, { padding: [0, 0, 0, 0] });
 
     // Rubberband zeichnen
     this._vectorSource.clear();
