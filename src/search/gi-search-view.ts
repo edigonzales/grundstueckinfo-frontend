@@ -641,11 +641,10 @@ export class GiSearchView extends HTMLElement {
         .result-egrid { font-size: 0.8rem; color: #666; margin-top: 0.2rem; }
         .result-type { font-size: 0.85rem; color: #333; margin-top: 0.2rem; }
         .detail-btn {
-          margin-top: 0.5rem;
           padding: 0.35rem 0.75rem;
           background: #c00;
           color: white;
-          border: none;
+          border: 1px solid transparent;
           border-radius: 3px;
           cursor: pointer;
           font-size: 0.8rem;

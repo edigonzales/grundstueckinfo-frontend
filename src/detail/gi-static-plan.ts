@@ -8,7 +8,7 @@ import VectorSource from 'ol/source/Vector';
 import { Polygon } from 'ol/geom';
 import { Feature } from 'ol';
 import { Style, Stroke } from 'ol/style';
-import { registerSwissProjection } from '../map/map-utils';
+import { registerSwissProjection, wmsImageLoadFunction } from '../map/map-utils';
 import { parseWmsGetMapUrl } from './wms-url-utils';
 
 registerSwissProjection();
@@ -81,6 +81,7 @@ export class GiStaticPlan extends HTMLElement {
       params,
       ratio: 1,
       projection: EPSG_2056,
+      imageLoadFunction: wmsImageLoadFunction,
     });
 
     const imageLayer = new ImageLayer({ source, zIndex: 1 });

@@ -9,6 +9,7 @@ import {
   DISCRETE_RESOLUTIONS,
   WMTS_MATRIX_IDS,
   WMTS_MATRIX_RESOLUTIONS,
+  wmsImageLoadFunction,
 } from './map-utils';
 
 const mockConfig: AppConfig = {
@@ -80,6 +81,16 @@ describe('GiMap', () => {
     expect(tileUrl).toBe(
       'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/2056/18/20/10.jpeg'
     );
+    document.body.removeChild(el);
+  });
+
+  it('uses ImageWMS source with imageLoadFunction for MAP_RESOLUTION', () => {
+    const el = createMapElement();
+    const wmsLayer = (el as any)._wmsLayer;
+    const source = wmsLayer.getSource();
+
+    expect(source).toBeInstanceOf(ImageWMS);
+    expect(source.getImageLoadFunction()).toBe(wmsImageLoadFunction);
     document.body.removeChild(el);
   });
 

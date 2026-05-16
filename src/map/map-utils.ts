@@ -77,3 +77,27 @@ export function createSwissWmtsTileGrid(): WMTSTileGrid {
     tileSize: 256,
   });
 }
+
+/**
+ * Berechnet die aktuelle Bildschirm-DPI aus `window.devicePixelRatio`.
+ * Basiswert ist 96 (CSS-Standard).
+ */
+export function getMapResolutionDpi(): number {
+  return Math.round((window.devicePixelRatio || 1) * 96);
+}
+
+/**
+ * Fügt einer URL den MAP_RESOLUTION-Parameter mit der aktuellen Bildschirm-DPI an.
+ */
+export function setMapResolutionParam(url: string): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}MAP_RESOLUTION=${getMapResolutionDpi()}`;
+}
+
+/**
+ * OpenLayers `imageLoadFunction`, die vor dem Laden an jede GetMap-URL
+ * den Parameter `MAP_RESOLUTION` mit der aktuellen DPI anhängt.
+ */
+export function wmsImageLoadFunction(image: any, src: string): void {
+  image.getImage().src = setMapResolutionParam(src);
+}

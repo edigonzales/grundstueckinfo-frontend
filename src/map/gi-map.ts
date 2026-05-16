@@ -19,6 +19,7 @@ import {
   DISCRETE_RESOLUTIONS,
   registerSwissProjection,
   SWISS_EXTENT,
+  wmsImageLoadFunction,
 } from './map-utils';
 
 const EPSG_2056 = 'EPSG:2056';
@@ -154,6 +155,7 @@ export class GiMap extends HTMLElement {
         CRS: config.backgroundWms.crs,
       },
       serverType: 'mapserver',
+      imageLoadFunction: wmsImageLoadFunction,
     });
 
     return new ImageLayer({ source, zIndex: 2, visible: false });
